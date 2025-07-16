@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './store';
@@ -23,8 +23,19 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import BottomNavigation from '@/components/ui/BottomNavigation';
 import LectureDetails from "./pages/LectureDetails";
 import ScrollToTop from "./ScrollToTop";
+import { useAppSelector } from "@/hooks/useAppSelector";
 
 const queryClient = new QueryClient();
+
+// مكون الحماية
+function PrivateRoute() {
+  const isAuthenticated = useAppSelector((state) => state.user.isAuthenticated);
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (!isAuthenticated || !token) {
+    return <Navigate to="/login" replace />;
+  }
+  return <Outlet />;
+}
 
 function App() {
   const isMobile = useIsMobile();
@@ -43,8 +54,11 @@ function App() {
                   <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/courses" element={<Courses />} />
-                    <Route path="/courses/:id" element={<CourseDetails />} />
-                    <Route path="/courses/:courseId/lecture/:lectureId" element={<LectureDetails />} />
+                    {/* حماية المسارات */}
+                    <Route element={<PrivateRoute />}>
+                      <Route path="/courses/:id" element={<CourseDetails />} />
+                      <Route path="/courses/:courseId/lecture/:lectureId" element={<LectureDetails />} />
+                    </Route>
                     <Route path="/articles" element={<Articles />} />
                     <Route path="/services" element={<Services />} />
                     <Route path="/portfolio" element={<Portfolio />} />
