@@ -1,0 +1,191 @@
+@import url('https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Gaza Coding Space - Modern Blue/Purple Theme */
+    --background: 240 10% 98%;
+    --foreground: 234 30% 15%;
+
+    --card: 240 10% 100%;
+    --card-foreground: 234 30% 15%;
+
+    --popover: 240 10% 100%;
+    --popover-foreground: 234 30% 15%;
+
+    /* Primary - Beautiful Blue */
+    --primary: 231 76% 52%;
+    --primary-foreground: 240 10% 98%;
+    --primary-hover: 231 76% 47%;
+
+    /* Secondary - Elegant Purple */
+    --secondary: 271 91% 65%;
+    --secondary-foreground: 240 10% 98%;
+
+    /* Accent - Vibrant Orange */
+    --accent: 25 95% 53%;
+    --accent-foreground: 240 10% 98%;
+
+    /* Muted tones */
+    --muted: 240 5% 96%;
+    --muted-foreground: 234 15% 45%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 240 10% 98%;
+
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 231 76% 52%;
+
+    --radius: 0.75rem;
+
+    /* Custom Gaza Coding Space Colors */
+    --gaza-blue: 231 76% 52%;
+    --gaza-purple: 271 91% 65%;
+    --gaza-orange: 25 95% 53%;
+    --gaza-gradient-start: 231 76% 52%;
+    --gaza-gradient-end: 271 91% 65%;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--gaza-blue)), hsl(var(--gaza-purple)));
+    --gradient-hero: linear-gradient(180deg, hsl(var(--background)), hsl(var(--gaza-blue) / 0.05));
+    --gradient-card: linear-gradient(145deg, hsl(var(--card)), hsl(var(--gaza-blue) / 0.03));
+    
+    /* Shadows */
+    --shadow-elegant: 0 10px 30px -10px hsl(var(--gaza-blue) / 0.2);
+    --shadow-glow: 0 0 40px hsl(var(--gaza-purple) / 0.3);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --sidebar-background: 240 10% 98%;
+    --sidebar-foreground: 234 30% 15%;
+    --sidebar-primary: 231 76% 52%;
+    --sidebar-primary-foreground: 240 10% 98%;
+    --sidebar-accent: 240 5% 96%;
+    --sidebar-accent-foreground: 234 30% 15%;
+    --sidebar-border: 240 6% 90%;
+    --sidebar-ring: 231 76% 52%;
+
+    html, body {
+      font-family: 'Almarai', Arial, sans-serif;
+      direction: rtl;
+    }
+    body[dir="rtl"] {
+      font-family: 'Almarai', 'Inter', Arial, sans-serif;
+      direction: rtl;
+    }
+  }
+
+  .dark {
+    /* Gaza Coding Space - Dark Mode */
+    --background: 234 30% 8%;
+    --foreground: 240 10% 95%;
+
+    --card: 234 25% 10%;
+    --card-foreground: 240 10% 95%;
+
+    --popover: 234 25% 10%;
+    --popover-foreground: 240 10% 95%;
+
+    /* Primary - Bright Blue for dark mode */
+    --primary: 231 85% 62%;
+    --primary-foreground: 234 30% 8%;
+    --primary-hover: 231 85% 67%;
+
+    /* Secondary - Vibrant Purple */
+    --secondary: 271 91% 70%;
+    --secondary-foreground: 234 30% 8%;
+
+    /* Accent - Bright Orange */
+    --accent: 25 95% 58%;
+    --accent-foreground: 234 30% 8%;
+
+    --muted: 234 20% 15%;
+    --muted-foreground: 240 5% 65%;
+
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 240 10% 95%;
+
+    --border: 234 20% 18%;
+    --input: 234 20% 18%;
+    --ring: 231 85% 62%;
+
+    /* Dark mode gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--gaza-blue)), hsl(var(--gaza-purple)));
+    --gradient-hero: linear-gradient(180deg, hsl(var(--background)), hsl(var(--gaza-blue) / 0.1));
+    --gradient-card: linear-gradient(145deg, hsl(var(--card)), hsl(var(--gaza-blue) / 0.05));
+    
+    /* Dark shadows */
+    --shadow-elegant: 0 10px 30px -10px hsl(var(--gaza-blue) / 0.4);
+    --shadow-glow: 0 0 40px hsl(var(--gaza-purple) / 0.5);
+
+    --sidebar-background: 234 25% 10%;
+    --sidebar-foreground: 240 10% 95%;
+    --sidebar-primary: 231 85% 62%;
+    --sidebar-primary-foreground: 234 30% 8%;
+    --sidebar-accent: 234 20% 15%;
+    --sidebar-accent-foreground: 240 10% 95%;
+    --sidebar-border: 234 20% 18%;
+    --sidebar-ring: 231 85% 62%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    direction: rtl;
+  }
+
+  h1, .h1 {
+    @apply text-xl md:text-2xl lg:text-3xl font-bold leading-tight mb-3;
+  }
+  h2, .h2 {
+    @apply text-lg md:text-xl lg:text-2xl font-semibold mb-2;
+  }
+  h3, .h3 {
+    @apply text-base md:text-lg font-medium mb-1;
+  }
+  p, .p {
+    @apply text-sm md:text-base leading-relaxed;
+  }
+  .section {
+    @apply py-14 md:py-20;
+  }
+}
+
+@layer components {
+  .sidebar-wrapper {
+    --sidebar-width: 280px;
+    --sidebar-width-icon: 60px;
+  }
+  
+  .sidebar-mobile {
+    --sidebar-width: 280px;
+  }
+  
+  .skeleton-width {
+    --skeleton-width: 70%;
+  }
+}
+
+@layer utilities {
+  @keyframes bounce-up {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  .animate-bounce-up {
+    animation: bounce-up 0.7s cubic-bezier(.4,0,.2,1) infinite;
+  }
+}

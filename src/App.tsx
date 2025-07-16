@@ -1,0 +1,69 @@
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Provider } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
+import { store, persistor } from './store';
+import Index from "./pages/Index";
+import Courses from "./pages/Courses";
+import Articles from "./pages/Articles";
+import Services from "./pages/Services";
+import Portfolio from "./pages/Portfolio";
+import Contact from "./pages/Contact";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import NotFound from "./pages/NotFound";
+import Verify from './pages/Verify';
+import Header from "./components/layout/Header";
+import Footer from "./components/layout/Footer";
+import CourseDetails from "./pages/CourseDetails";
+import { useIsMobile } from "@/hooks/use-mobile";
+import BottomNavigation from '@/components/ui/BottomNavigation';
+import LectureDetails from "./pages/LectureDetails";
+import ScrollToTop from "./ScrollToTop";
+
+const queryClient = new QueryClient();
+
+function App() {
+  const isMobile = useIsMobile();
+  return (
+    <Provider store={store}>
+      <PersistGate loading={<div>Loading...</div>} persistor={persistor}>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+                <ScrollToTop />
+              <div className="min-h-screen flex flex-col" dir="rtl">
+                <Header />
+                <main className="flex-1">
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/courses" element={<Courses />} />
+                    <Route path="/courses/:id" element={<CourseDetails />} />
+                    <Route path="/courses/:courseId/lecture/:lectureId" element={<LectureDetails />} />
+                    <Route path="/articles" element={<Articles />} />
+                    <Route path="/services" element={<Services />} />
+                    <Route path="/portfolio" element={<Portfolio />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/verify" element={<Verify />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </main>
+                <Footer />
+                {isMobile && <BottomNavigation />}
+              </div>
+            </BrowserRouter>
+          </TooltipProvider>
+        </QueryClientProvider>
+      </PersistGate>
+    </Provider>
+  );
+}
+
+export default App;
