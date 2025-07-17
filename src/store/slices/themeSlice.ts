@@ -1,24 +1,25 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-export type Theme = 'light' | 'dark' | 'system';
+export type Theme = 'light' | 'dark';
 
 interface ThemeState {
   theme: Theme;
-  systemTheme: 'light' | 'dark';
-  effectiveTheme: 'light' | 'dark';
 }
 
-const getSystemTheme = (): 'light' | 'dark' => {
+const THEME_KEY = 'theme';
+
+const getInitialTheme = (): Theme => {
   if (typeof window !== 'undefined') {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const stored = localStorage.getItem(THEME_KEY);
+    if (stored === 'light' || stored === 'dark') {
+      return stored;
+    }
   }
   return 'light';
 };
 
 const initialState: ThemeState = {
-  theme: 'system',
-  systemTheme: getSystemTheme(),
-  effectiveTheme: getSystemTheme(),
+  theme: getInitialTheme(),
 };
 
 const themeSlice = createSlice({
@@ -27,49 +28,27 @@ const themeSlice = createSlice({
   reducers: {
     setTheme: (state, action: PayloadAction<Theme>) => {
       state.theme = action.payload;
-      
-      if (action.payload === 'system') {
-        state.effectiveTheme = state.systemTheme;
-      } else {
-        state.effectiveTheme = action.payload;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(THEME_KEY, action.payload);
       }
-      
       // Apply theme to document
       const root = document.documentElement;
       root.classList.remove('light', 'dark');
-      root.classList.add(state.effectiveTheme);
-    },
-    setSystemTheme: (state, action: PayloadAction<'light' | 'dark'>) => {
-      state.systemTheme = action.payload;
-      
-      if (state.theme === 'system') {
-        state.effectiveTheme = action.payload;
-        
-        // Apply theme to document
-        const root = document.documentElement;
-        root.classList.remove('light', 'dark');
-        root.classList.add(state.effectiveTheme);
-      }
+      root.classList.add(state.theme);
     },
     toggleTheme: (state) => {
-      if (state.theme === 'light') {
-        state.theme = 'dark';
-        state.effectiveTheme = 'dark';
-      } else if (state.theme === 'dark') {
-        state.theme = 'system';
-        state.effectiveTheme = state.systemTheme;
-      } else {
-        state.theme = 'light';
-        state.effectiveTheme = 'light';
+      const newTheme: Theme = state.theme === 'light' ? 'dark' : 'light';
+      state.theme = newTheme;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(THEME_KEY, newTheme);
       }
-      
       // Apply theme to document
       const root = document.documentElement;
       root.classList.remove('light', 'dark');
-      root.classList.add(state.effectiveTheme);
+      root.classList.add(state.theme);
     },
   },
 });
 
-export const { setTheme, setSystemTheme, toggleTheme } = themeSlice.actions;
+export const { setTheme, toggleTheme } = themeSlice.actions;
 export default themeSlice.reducer;

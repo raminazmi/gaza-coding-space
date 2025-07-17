@@ -20,7 +20,7 @@ const moreItems = navItems.slice(3);
 
 const BottomNavigation: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { effectiveTheme } = useAppSelector((state) => state.theme);
+  const theme = useAppSelector((state) => state.theme.theme);
   const user = useAppSelector((state) => state.user.user);
   const isAuthenticated = useAppSelector((state) => state.user.isAuthenticated);
   const location = useLocation();
@@ -100,8 +100,8 @@ const BottomNavigation: React.FC = () => {
         </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="center" className="mb-2 min-w-[7rem] p-1 rounded-lg text-xs">
           <DropdownMenuItem onClick={handleThemeToggle} className="flex justify-between w-full items-center gap-1 hover:bg-purple-50/80 hover:text-purple-700 focus:bg-purple-100/80 focus:text-purple-800 transition-all rounded">
-            {effectiveTheme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
-            {effectiveTheme === 'dark' ? <FiSun className="h-4 w-4" /> : <FiMoon className="h-4 w-4" />}
+            {theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
+            {theme === 'dark' ? <FiSun className="h-4 w-4" /> : <FiMoon className="h-4 w-4" />}
           </DropdownMenuItem>
           {isAuthenticated && user ? (
             <>

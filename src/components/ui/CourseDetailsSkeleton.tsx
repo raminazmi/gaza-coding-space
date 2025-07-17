@@ -9,7 +9,7 @@ const shimmer = `
 
 const SkeletonBox = ({ className }: { className?: string }) => (
   <div
-    className={`bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse ${className}`}
+    className={`bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-gray-700 dark:via-gray-800 dark:to-gray-700 animate-pulse ${className}`}
     style={{
       backgroundSize: '800px 100%',
       animation: 'shimmer 1.5s infinite linear',
@@ -18,10 +18,10 @@ const SkeletonBox = ({ className }: { className?: string }) => (
 );
 
 const CourseDetailsSkeleton = () => (
-  <div className="min-h-screen bg-gray-50" dir="rtl">
+  <div className="min-h-screen bg-gray-50 dark:bg-gray-900" dir="rtl">
     <style>{shimmer}</style>
     {/* Header Skeleton */}
-    <div className="w-full py-10 bg-gradient-to-r from-blue-100 via-blue-200 to-blue-100 mb-8 animate-pulse">
+    <div className="w-full py-10 bg-gradient-to-r from-blue-100 via-blue-200 to-blue-100 dark:from-gray-800 dark:via-gray-900 dark:to-gray-800 mb-8 animate-pulse">
       <div className="container max-w-6xl mx-auto px-4 flex flex-col md:flex-row gap-8 items-center">
         <SkeletonBox className="w-full max-w-md h-48 md:h-64 rounded-xl shadow-2xl mb-4 md:mb-0" />
         <div className="flex-1 space-y-4">
@@ -40,7 +40,7 @@ const CourseDetailsSkeleton = () => (
     <div className="container max-w-6xl mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8">
       {/* Main Section */}
       <main className="lg:w-2/3 w-full space-y-8">
-        <div className="bg-white rounded-xl shadow-md p-6 animate-pulse">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 animate-pulse">
           <SkeletonBox className="h-6 w-1/3 rounded mb-6" />
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (
@@ -52,7 +52,7 @@ const CourseDetailsSkeleton = () => (
             <SkeletonBox className="h-10 w-32 rounded-lg" />
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-md p-6 animate-pulse">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 animate-pulse">
           <SkeletonBox className="h-6 w-1/4 rounded mb-4" />
           <div className="space-y-2">
             {[...Array(4)].map((_, i) => (
@@ -62,7 +62,7 @@ const CourseDetailsSkeleton = () => (
         </div>
       </main>
       {/* Sidebar Skeleton */}
-      <aside className="md:w-1/4 w-full bg-white p-4 rounded-2xl shadow-xl mb-4 md:mb-0 animate-pulse">
+      <aside className="md:w-1/4 w-full bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-xl mb-4 md:mb-0 animate-pulse">
         <SkeletonBox className="h-6 w-1/2 rounded mb-6" />
         <div className="space-y-4">
           {[...Array(5)].map((_, i) => (

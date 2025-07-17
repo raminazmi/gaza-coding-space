@@ -15,7 +15,7 @@ import { apiBaseUrl } from '@/lib/utils';
 
 const Header = () => {
   const dispatch = useAppDispatch();
-  const { effectiveTheme } = useAppSelector((state) => state.theme);
+  const theme = useAppSelector((state) => state.theme.theme);
   const user = useAppSelector((state) => state.user.user);
   const isAuthenticated = useAppSelector((state) => state.user.isAuthenticated);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -73,10 +73,10 @@ const Header = () => {
           {/* Logo */}
           <a href="/" className="flex items-center gap-2 flex-row mx-auto md:mx-0">
             <span className="font-extrabold text-lg md:text-xl tracking-tight drop-shadow-sm">
-              <span style={{ color: '#041665FF' }}>TEBU</span>
-              <span className="text-blue-400/40" style={{ marginRight: 4, marginLeft: 4 }}> SOFT</span>
+              <span className="text-[#041665] dark:text-blue-200">TEBU</span>
+              <span className="text-blue-400/40 dark:text-purple-300/60 mx-1">SOFT</span>
             </span>
-            <span className="inline-flex items-center justify-center rounded-lg bg-gradient-to-tr from-blue-500 to-purple-500  shadow-md ring-2 ring-blue-400/40 ring-offset-2 ring-offset-white dark:ring-offset-gray-900 transition-all animate-glow">
+            <span className="inline-flex items-center justify-center rounded-lg bg-gradient-to-tr from-blue-500 to-purple-500 shadow-md ring-2 ring-blue-400/40 ring-offset-2 ring-offset-white dark:ring-offset-gray-900 transition-all animate-glow">
               <img src="/assests/tebusoft.jpg" alt="TEBU SOFT" className="rounded-lg object-cover h-8 w-8 md:h-10 md:w-10 drop-shadow-glow" />
             </span>
           </a>
@@ -111,7 +111,7 @@ const Header = () => {
                 <DropdownMenuTrigger asChild>
                   <div className="flex items-center gap-2 cursor-pointer">
                     {user && user.name ? (
-                      <div className="flex items-center gap-2 cursor-pointer bg-white text-blue-700 font-semibold text-base rounded-xl px-1.5 py-1 shadow border border-blue-100 max-w-[160px] truncate">
+                      <div className="flex items-center gap-2 cursor-pointer bg-white dark:bg-gray-900 text-blue-700 dark:text-blue-200 font-semibold text-base rounded-xl px-1.5 py-1 shadow border border-blue-100 dark:border-blue-900 max-w-[160px] truncate transition-colors">
                         <span className="flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 w-7 h-7">
                           <FiUser className="h-5 w-5 text-white" />
                         </span>
@@ -127,8 +127,8 @@ const Header = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-48">
                   <DropdownMenuItem onClick={handleThemeToggle} className="flex justify-between items-center gap-2 hover:bg-purple-50/80 hover:text-purple-700 focus:bg-purple-100/80 focus:text-purple-800 transition-all">
-                    {effectiveTheme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
-                    {effectiveTheme === 'dark' ? <FiSun className="h-4 w-4" /> : <FiMoon className="h-4 w-4" />}
+                    {theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
+                    {theme === 'dark' ? <FiSun className="h-4 w-4" /> : <FiMoon className="h-4 w-4" />}
                   </DropdownMenuItem>
                   {isAuthenticated && user ? (
                     <>
