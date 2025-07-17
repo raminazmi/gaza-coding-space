@@ -24,6 +24,10 @@ import BottomNavigation from '@/components/ui/BottomNavigation';
 import LectureDetails from "./pages/LectureDetails";
 import ScrollToTop from "./ScrollToTop";
 import { useAppSelector } from "@/hooks/useAppSelector";
+import PortfolioDetails from "./pages/PortfolioDetails";
+import OrderService from "./pages/OrderService";
+import Messenger from "./pages/Messenger";
+import ChatRoom from "./pages/ChatRoom";
 
 const queryClient = new QueryClient();
 
@@ -89,10 +93,14 @@ function App() {
                     <Route path="/courses" element={<Courses />} />
                     <Route path="/courses/:id" element={<CourseDetails />} />
                     <Route path="/courses/:courseId/lecture/:lectureId" element={<LectureDetails />} />
+                    <Route path="/chat" element={<Messenger />} />
+                    <Route path="/chat/:id" element={<ChatRoom />} />
                   </Route>
                   <Route path="/articles" element={<Articles />} />
                   <Route path="/services" element={<Services />} />
                   <Route path="/portfolio" element={<Portfolio />} />
+                  <Route path="/portfolio/:id" element={<PortfolioDetails />} />
+                  <Route path="/order-service" element={<OrderService />} />
                   <Route path="/contact" element={<Contact />} />
                   <Route path="*" element={<NotFound />} />
                 </Route>

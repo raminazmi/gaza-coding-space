@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '@/hooks';
 import { toggleTheme } from '@/store/slices/themeSlice';
-import { FiUser, FiMoon, FiSun, FiCode } from 'react-icons/fi';
+import { FiUser, FiMoon, FiSun, FiCode, FiMessageCircle } from 'react-icons/fi';
 import { setUser, logout } from '@/store/slices/userSlice';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,6 +12,7 @@ import {
   DropdownMenuItem
 } from '@/components/ui/dropdown-menu';
 import { apiBaseUrl } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 const Header = () => {
   const dispatch = useAppDispatch();
@@ -105,6 +106,15 @@ const Header = () => {
 
           {/* Right Side Actions */}
           <div className="flex items-center gap-2 flex-row">
+            {/* Chat Icon */}
+            <Link
+              to="/chat"
+              className={`relative hidden md:flex items-center justify-center rounded-full p-2 transition-colors hover:bg-blue-100/60 dark:hover:bg-blue-900/40 ${location.pathname.startsWith('/chat') ? 'bg-blue-100/80 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200' : 'text-blue-700 dark:text-gray-100'}`}
+              title="الدردشة"
+            >
+              <FiMessageCircle className="h-6 w-6" />
+              {/* <Badge className="absolute -top-1 -right-1 bg-red-500 text-white">2</Badge> */}
+            </Link>
             {/* User Menu + Desktop Search */}
             <div className="hidden md:flex items-center gap-2 flex-row-reverse">
               <DropdownMenu>
