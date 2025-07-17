@@ -100,7 +100,7 @@ const Verify = () => {
                 onChange={e => handleChange(e.target.value, idx)}
                 onKeyDown={e => handleKeyDown(e, idx)}
                 ref={el => (inputsRef.current[idx] = el)}
-                className="w-9 h-11 text-lg md:w-12 md:h-14 md:text-2xl font-bold rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-400 bg-white shadow-sm transition-all outline-none placeholder:text-gray-300"
+                className="w-9 h-11 text-lg md:w-12 md:h-14 md:text-2xl font-bold rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-400 bg-white shadow-sm transition-all outline-none placeholder:text-gray-300 text-center"
                 disabled={isSubmitting}
                 autoFocus={idx === 0}
                 aria-label={`رقم ${idx + 1}`}
