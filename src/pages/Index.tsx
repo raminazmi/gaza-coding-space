@@ -66,7 +66,7 @@ const Index = () => {
             {x: -400, y: 400},
           ],
           curviness: 1.5,
-          autoRotate: true
+          autoRotate: false
         },
         scrollTrigger: {
           trigger: coursesRef.current,
@@ -89,7 +89,7 @@ const Index = () => {
             {x: 400, y: 400},
           ],
           curviness: 1.5,
-          autoRotate: true
+          autoRotate: false
         },
         scrollTrigger: {
           trigger: servicesRef.current,
