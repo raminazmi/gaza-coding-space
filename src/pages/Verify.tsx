@@ -81,18 +81,14 @@ const Verify = () => {
   };
 
   return (
-    <div className="min-h-screen py-16 bg-gradient-hero flex items-center justify-center" dir="rtl">
-      <div className="bg-gradient-card rounded-2xl shadow-elegant p-10 w-full max-w-md mx-auto">
+    <div className="container min-h-screen py-16 bg-gray-100 flex items-center justify-center" dir="rtl">
+      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md mx-auto border border-gray-200">
         <div className="text-center mb-8">
-          <h1 className="h1 bg-gradient-primary bg-clip-text text-transparent drop-shadow-glow mb-2">
-            تحقق من بريدك الإلكتروني
-          </h1>
-          <p className="text-xl text-muted-foreground">
-            يرجى إدخال كود التحقق المرسل إلى بريدك الإلكتروني
-          </p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">تحقق من بريدك الإلكتروني</h1>
+          <p className="text-base md:text-lg text-gray-500">يرجى إدخال كود التحقق المرسل إلى بريدك الإلكتروني</p>
         </div>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          <div className="flex justify-center gap-2 flex-row-reverse" dir="rtl">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+          <div className="flex justify-center gap-2 flex-row-reverse flex-nowrap" dir="rtl">
             {code.map((digit, idx) => (
               <Input
                 key={idx}
@@ -104,14 +100,14 @@ const Verify = () => {
                 onChange={e => handleChange(e.target.value, idx)}
                 onKeyDown={e => handleKeyDown(e, idx)}
                 ref={el => (inputsRef.current[idx] = el)}
-                className="w-12 h-14 text-center text-2xl font-mono rounded-xl border border-primary focus:ring-2 focus:ring-primary transition-all"
+                className="w-9 h-11 text-lg md:w-12 md:h-14 md:text-2xl font-bold rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-400 bg-white shadow-sm transition-all outline-none placeholder:text-gray-300"
                 disabled={isSubmitting}
                 autoFocus={idx === 0}
                 aria-label={`رقم ${idx + 1}`}
               />
             ))}
           </div>
-          <Button type="submit" size="lg" className="bg-gradient-primary hover:shadow-glow rounded-2xl mt-4" disabled={isSubmitting || code.some(d => !d)}>
+          <Button type="submit" size="lg" className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl mt-4 py-3 text-lg transition-all duration-200" disabled={isSubmitting || code.some(d => !d)}>
             {isSubmitting ? 'جاري التحقق...' : 'تحقق'}
           </Button>
         </form>

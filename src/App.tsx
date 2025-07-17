@@ -30,8 +30,8 @@ const queryClient = new QueryClient();
 // مكون الحماية
 function PrivateRoute() {
   const isAuthenticated = useAppSelector((state) => state.user.isAuthenticated);
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  if (!isAuthenticated || !token) {
+  const token = localStorage.getItem('token') ;
+  if (!token) {
     return <Navigate to="/login" replace />;
   }
   return <Outlet />;
@@ -53,9 +53,8 @@ function App() {
                 <main className="flex-1">
                   <Routes>
                     <Route path="/" element={<Index />} />
-                    <Route path="/courses" element={<Courses />} />
-                    {/* حماية المسارات */}
                     <Route element={<PrivateRoute />}>
+                      <Route path="/courses" element={<Courses />} />
                       <Route path="/courses/:id" element={<CourseDetails />} />
                       <Route path="/courses/:courseId/lecture/:lectureId" element={<LectureDetails />} />
                     </Route>

@@ -61,12 +61,13 @@ const Header = () => {
         <div className="container flex h-16 items-center justify-between px-2 md:px-6">
         {/* Logo */}
           <a href="/" className="flex items-center gap-2 flex-row mx-auto md:mx-0">
-            <span className="inline-flex items-center justify-center rounded-lg bg-gradient-to-tr from-blue-500 to-purple-500 p-1 md:p-2 shadow-md ring-2 ring-blue-400/40 ring-offset-2 ring-offset-white dark:ring-offset-gray-900 transition-all animate-glow">
-              <FiCode className="text-white h-5 w-5 md:h-6 md:w-6 drop-shadow-glow" />
+            <span className="inline-flex items-center justify-center rounded-lg bg-gradient-to-tr from-blue-500 to-purple-500  shadow-md ring-2 ring-blue-400/40 ring-offset-2 ring-offset-white dark:ring-offset-gray-900 transition-all animate-glow">
+              <img src="/assests/tebusoft.jpg" alt="TEBU SOFT" className="rounded-lg object-cover h-8 w-8 md:h-10 md:w-10 drop-shadow-glow" />
             </span>
-            <span className="font-extrabold text-lg md:text-xl bg-gradient-to-tr from-blue-500 to-purple-500 bg-clip-text text-transparent tracking-tight drop-shadow-sm">
-              غزة كودنج سبيس
-          </span>
+            <span className="font-extrabold text-lg md:text-xl tracking-tight drop-shadow-sm">
+              <span style={{ color: '#041665FF' }}>TEBU</span>
+              <span  className="text-blue-400/40" style={{  marginRight: 4, marginLeft: 4 }}> SOFT</span>
+            </span>
           </a>
 
         {/* Desktop Navigation */}

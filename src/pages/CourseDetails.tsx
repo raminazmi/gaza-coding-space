@@ -402,8 +402,8 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
                                       <span className={`text-sm ${!enrollStatus && course.salary !== 'مجاني' ? 'text-gray-400' : 'text-gray-700'}`}>
                                         {index + 1}. {lec.name}
                                         {lec.is_watch && (
-                                          <span className="ml-2 text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">
-                                            تم المشاهدة
+                                          <span className="mr-2 text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">
+                                            تمت المشاهدة
                                           </span>
                                         )}
                                       </span>
@@ -569,46 +569,46 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
           </main>
 
           {/* Sidebar */}
-        <aside className="md:w-1/4 w-full bg-white p-4 rounded-2xl shadow-xl mb-4 md:mb-0 md:sticky md:top-20 max-h-fit overflow-y-auto hidden md:block">
+        <aside className="w-full md:w-1/3 lg:w-1/4 bg-white p-3 md:p-4 rounded-2xl shadow-xl mb-4 md:mb-0 md:sticky md:top-20 max-h-fit overflow-y-auto">
             {/* Course Card */}
             <div className="overflow-hidden">
               <div className="border-b border-gray-200">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-bold text-gray-800">سعر الكورس</h3>
-                  <span className="text-2xl font-bold text-blue-600">
+                  <h3 className="text-lg md:text-xl font-bold text-gray-800">سعر الكورس</h3>
+                  <span className="text-xl md:text-2xl font-bold text-blue-600">
                     {course.salary ? `${course.salary} $` : 'مجاني'}
                   </span>
                 </div>
 
                 {renderEnrollButton()}
 
-                <button className="w-full mt-3 border border-blue-500 text-blue-500 py-3 rounded-lg font-bold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2" title="مشاركة الكورس">
+                <button className="w-full mt-3 border border-blue-500 text-blue-500 py-2 md:py-3 rounded-lg font-bold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 text-sm md:text-base" title="مشاركة الكورس">
                   <FiShare2 /> مشاركة الكورس
                 </button>
               </div>
 
-              <div className="p-6 space-y-4">
-                <h4 className="font-bold text-gray-700">معلومات الكورس</h4>
+              <div className="p-3 md:p-6 space-y-4">
+                <h4 className="font-bold text-gray-700 text-base md:text-lg">معلومات الكورس</h4>
                 <ul className="space-y-3">
-                  <li className="flex justify-between">
+                  <li className="flex justify-between text-sm md:text-base">
                     <span className="text-gray-600 flex items-center gap-2">
                       <FiBookOpen /> المحاضرات
                     </span>
                     <span className="font-medium">{course.chapters?.length || 0}</span>
                   </li>
-                 <li className="flex justify-between">
+                 <li className="flex justify-between text-sm md:text-base">
                     <span className="text-gray-600 flex items-center gap-2">
                       <FiClock /> المدة
                     </span>
                     <span className="font-medium">{totalMinutes > 0 ? `${totalMinutes} دقيقة` : '-'}</span>
                   </li>
-                  <li className="flex justify-between">
+                  <li className="flex justify-between text-sm md:text-base">
                     <span className="text-gray-600 flex items-center gap-2">
                       <FiGlobe /> اللغة
                     </span>
                     <span className="font-medium">{course.lan || '-'}</span>
                   </li>
-                  <li className="flex justify-between">
+                  <li className="flex justify-between text-sm md:text-base">
                     <span className="text-gray-600 flex items-center gap-2">
                       <FiCalendar /> آخر تحديث
                     </span>
@@ -620,14 +620,14 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
               </div>
 
               {course.resources?.length > 0 && (
-                <div className="p-6 border-t border-gray-200">
-                  <h4 className="font-bold text-gray-700 mb-3">الملفات المرفقة</h4>
+                <div className="p-3 md:p-6 border-t border-gray-200">
+                  <h4 className="font-bold text-gray-700 mb-3 text-base md:text-lg">الملفات المرفقة</h4>
                   <ul className="space-y-2">
                     {course.resources.map((resource: any) => (
-                      <li key={resource.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                      <li key={resource.id} className="flex items-center justify-between bg-gray-50 p-2 md:p-3 rounded-lg text-sm md:text-base">
                         <div className="flex items-center gap-2">
                           <FiFileText className="text-gray-500" />
-                          <span className="text-sm">{resource.name}</span>
+                          <span>{resource.name}</span>
                         </div>
                         <a
                           href={cleanMediaUrl(resource.file)}
@@ -645,14 +645,14 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
 
             {/* Certificate Info */}
             {course.certificate && (
-              <div className="bg-white rounded-xl shadow-md p-6">
+              <div className="bg-white rounded-xl shadow-md p-3 md:p-6 mt-4">
                 <div className="flex items-start gap-3">
-                  <div className="bg-blue-100 p-3 rounded-full">
-                    <FiAward className="text-blue-600 text-xl" />
+                  <div className="bg-blue-100 p-2 md:p-3 rounded-full">
+                    <FiAward className="text-blue-600 text-lg md:text-xl" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-800">شهادة إتمام</h4>
-                    <p className="text-gray-600 text-sm mt-1">
+                    <h4 className="font-bold text-gray-800 text-base md:text-lg">شهادة إتمام</h4>
+                    <p className="text-gray-600 text-xs md:text-sm mt-1">
                       احصل على شهادة معتمدة عند إتمامك لهذا الكورس بنجاح
                     </p>
                   </div>
@@ -662,17 +662,17 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
 
             {/* Enrollment Status */}
             {enrollStatus && (
-              <div className="bg-white rounded-xl shadow-md p-6">
+              <div className="rounded-md shadow p-2 md:p-3 mt-4">
                 <div className="flex items-start gap-3">
-                  <div className="bg-green-100 p-3 rounded-full">
-                    <FiCheckCircle className="text-green-600 text-xl" />
+                  <div className="bg-green-100 p-2 md:p-3 rounded-full">
+                    <FiCheckCircle className="text-green-600 text-lg md:text-xl" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-800">حالة التسجيل</h4>
-                    <p className="text-gray-600 text-sm mt-1">
+                    <h4 className="font-bold text-gray-800 text-base md:text-lg">حالة التسجيل</h4>
+                    <p className="text-gray-600 text-xs md:text-sm mt-1">
                       أنت مسجل في هذا الكورس منذ {new Date(enrollStatus.created_at).toLocaleDateString()}
                     </p>
-                    <p className="text-sm mt-2">
+                    <p className="text-xs md:text-sm mt-2">
                       الحالة: <span className="font-medium text-green-600">
                         {enrollStatus.status === 'joined' ? 'مسجل' : enrollStatus.status}
                       </span>

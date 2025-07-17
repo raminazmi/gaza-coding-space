@@ -169,7 +169,7 @@ const Index = () => {
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center max-w-4xl mx-auto">
             <h1 className="h1 bg-gradient-primary bg-clip-text text-transparent drop-shadow-glow mb-6">
-              مرحبًا بك في منصة غزة كودنج سبيس
+              مرحبًا بك في منصة TEBU SOFT
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground mb-8 leading-relaxed">
               منصة تعليمية رائدة في تعليم البرمجة وتطوير التطبيقات للطلاب في غزة وفلسطين

@@ -6,7 +6,7 @@ export * from './portfolio';
 
 // Site configuration
 export const siteConfig = {
-  name: 'غزة كودنج سبيس',
+  name: 'TEBU SOFT',
   description: 'منصة تعليمية رائدة في تعليم البرمجة وتطوير التطبيقات للطلاب في غزة وفلسطين',
   keywords: ['تعلم البرمجة', 'دورات البرمجة', 'تطوير التطبيقات', 'غزة', 'فلسطين', 'تعليم تقني'],
   contact: {

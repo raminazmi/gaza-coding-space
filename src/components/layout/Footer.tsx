@@ -15,15 +15,15 @@ const Footer = () => {
   };
 
   return (
-    <footer className="bg-white/90 dark:bg-gray-900/90 border-t pt-10 pb-6 mt-16 text-gray-700 dark:text-gray-200 max-md:mb-12" dir="rtl">
+    <footer className="bg-white/90 dark:bg-gray-900/90 border-t pt-10 pb-6 text-gray-700 dark:text-gray-200 max-md:mb-12" dir="rtl">
       <div className="container mx-auto px-4">
         {/* Mobile View - Accordion Sections */}
         <div className="md:hidden flex flex-col gap-6">
           {/* Logo Section */}
           <div className="flex flex-col items-center gap-3 mb-4">
             <a href="/" className="flex items-center gap-2 mb-2">
-              <img src="/favicon.ico" alt="شعار غزة كودنج سبيس" className="w-10 h-10 rounded-lg shadow" />
-              <span className="font-extrabold text-xl text-blue-700 dark:text-blue-300">غزة كودنج سبيس</span>
+              <img src="/favicon.ico" alt="شعار TEBU SOFT" className="w-10 h-10 rounded-lg shadow" />
+              <span className="font-extrabold text-xl text-blue-700 dark:text-blue-300">TEBU SOFT</span>
             </a>
             <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs text-center leading-relaxed">
               منصة تعليمية متخصصة في البرمجة والتقنية، تقدم كورسات وورش عمل عالية الجودة بإشراف نخبة من المدربين العرب.
@@ -109,8 +109,8 @@ const Footer = () => {
           {/* لوجو ووصف */}
           <div className="flex-1 flex flex-col items-center md:items-start mb-8 md:mb-0 gap-3">
             <a href="/" className="flex items-center gap-2 mb-2">
-              <img src="/favicon.ico" alt="شعار غزة كودنج سبيس" className="w-10 h-10 rounded-lg shadow" />
-              <span className="font-extrabold text-xl text-blue-700 dark:text-blue-300">غزة كودنج سبيس</span>
+              <img src="/favicon.ico" alt="شعار TEBU SOFT" className="w-10 h-10 rounded-lg shadow" />
+              <span className="font-extrabold text-xl text-blue-700 dark:text-blue-300">TEBU SOFT</span>
             </a>
             <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs text-center md:text-right leading-relaxed">
               منصة تعليمية متخصصة في البرمجة والتقنية، تقدم كورسات وورش عمل عالية الجودة بإشراف نخبة من المدربين العرب.
@@ -183,7 +183,7 @@ const Footer = () => {
               <a href="#" className="hover:underline hover:text-blue-600 transition-colors">الشروط والأحكام</a>
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              © {new Date().getFullYear()} غزة كودنج سبيس. جميع الحقوق محفوظة.
+              © {new Date().getFullYear()} TEBU SOFT. جميع الحقوق محفوظة.
             </div>
           </div>
         </div>

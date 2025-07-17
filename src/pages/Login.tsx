@@ -52,7 +52,7 @@ const Login = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background" dir="rtl">
+    <div className="container flex flex-col items-center justify-center min-h-screen bg-background" dir="rtl">
       <div className="bg-gradient-card rounded-2xl shadow-elegant p-10 w-full max-w-lg mx-auto">
         <div className="text-center mb-8">
           <h1 className="h1 bg-gradient-primary bg-clip-text text-transparent drop-shadow-glow mb-2">
@@ -67,9 +67,9 @@ const Login = () => {
             <Label htmlFor="email">البريد الإلكتروني</Label>
             <Input id="email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-xl shadow-elegant h-12 mt-2" required />
                 </div>
-          <Button type="submit" size="lg" className="bg-gradient-primary hover:shadow-glow rounded-2xl mt-4">
-            تسجيل الدخول
-              </Button>
+          <Button type="submit" size="lg" className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl mt-4 py-3 text-lg transition-all duration-200" disabled={isSubmitting}>
+            {isSubmitting ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
+          </Button>
             </form>
         <div className="text-center mt-6">
           <span className="text-muted-foreground text-sm">

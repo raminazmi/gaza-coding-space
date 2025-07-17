@@ -48,7 +48,7 @@ const Features = () => {
             مميزات المنصة
           </h2>
           <p className="text-xl text-muted-foreground">
-            اكتشف أبرز ما يميز غزة كودنج سبيس عن غيرها من المنصات التعليمية
+            اكتشف أبرز ما يميز TEBU SOFT عن غيرها من المنصات التعليمية
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">

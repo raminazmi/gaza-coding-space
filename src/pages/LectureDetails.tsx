@@ -237,7 +237,39 @@ const LectureDetails = () => {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50" dir="rtl">
       <div className="py-6 container max-w-6xl mx-auto flex flex-col md:flex-row gap-6 flex-1">
-        {/* Mobile Aside - Top */}
+        <main className="md:w-3/4 w-full flex flex-col gap-6">
+          <div className="bg-white rounded-2xl shadow-xl p-2 md:p-4 flex flex-col gap-4 relative">
+            {lecture.is_watch?.status === 'endWatch' && (
+              <div className="absolute top-3 left-3 bg-green-500 text-white text-xs px-3 py-1 rounded-full z-10 flex items-center">
+                <svg className="w-3 h-3 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+                تمت المشاهدة
+              </div>
+            )}
+            <div className="w-full aspect-video bg-black rounded-xl overflow-hidden">
+              <video
+                controls
+                className="w-full h-full object-cover"
+                onEnded={handleVideoEnd}
+              >
+                <source src={lecture.videos} type="video/mp4" />
+                متصفحك لا يدعم تشغيل الفيديو
+              </video>
+            </div>
+            <div className="flex flex-col gap-1 px-1">
+              <div className="flex items-center gap-2 text-sm text-blue-600 font-medium">
+                <FaRegUserCircle className="text-lg" />
+                <span>{course.teacher?.name || course.user}</span>
+              </div>
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900">{lecture.name}</h1>
+              <div className="text-sm text-gray-500 mt-1">
+                {lecture.timeLecture} • {getWatchStatusText(lecture.is_watch?.status)}
+              </div>
+            </div>
+          </div>
+
+                  {/* Mobile Aside - Top */}
         <aside className="w-full bg-white p-4 rounded-2xl shadow-xl mb-4 md:hidden">
           <h2 className="text-lg font-bold text-gray-800 mb-4 border-b border-gray-100 pb-2">محتوى الدورة</h2>
           {chapters.length > 5 ? (
@@ -349,40 +381,8 @@ const LectureDetails = () => {
               ))}
             </>
           )}
-        </aside>
-
-        <main className="md:w-3/4 w-full flex flex-col gap-6">
-          <div className="bg-white rounded-2xl shadow-xl p-4 flex flex-col gap-4 relative">
-            {lecture.is_watch?.status === 'endWatch' && (
-              <div className="absolute top-3 left-3 bg-green-500 text-white text-xs px-3 py-1 rounded-full z-10 flex items-center">
-                <svg className="w-3 h-3 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                </svg>
-                تمت المشاهدة
-              </div>
-            )}
-            <div className="w-full aspect-video bg-black rounded-xl overflow-hidden">
-              <video
-                controls
-                className="w-full h-full object-cover"
-                onEnded={handleVideoEnd}
-              >
-                <source src={lecture.videos} type="video/mp4" />
-                متصفحك لا يدعم تشغيل الفيديو
-              </video>
-            </div>
-            <div className="flex flex-col gap-1 px-1">
-              <div className="flex items-center gap-2 text-sm text-blue-600 font-medium">
-                <FaRegUserCircle className="text-lg" />
-                <span>{course.teacher?.name || course.user}</span>
-              </div>
-              <h1 className="text-xl md:text-2xl font-bold text-gray-900">{lecture.name}</h1>
-              <div className="text-sm text-gray-500 mt-1">
-                {lecture.timeLecture} • {getWatchStatusText(lecture.is_watch?.status)}
-              </div>
-            </div>
-          </div>
-
+          </aside>
+          
           {!hasMyDiscussionWithTeacher && (
             <form onSubmit={handleSend} className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl shadow-lg p-5 flex flex-col gap-4 border border-blue-100">
               <div className="flex flex-col gap-1">
