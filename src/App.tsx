@@ -37,8 +37,35 @@ function PrivateRoute() {
   return <Outlet />;
 }
 
-function App() {
+// مكون حماية للصفحات العامة فقط
+function PublicOnlyRoute() {
+  const isAuthenticated = useAppSelector((state) => state.user.isAuthenticated);
+  const token = localStorage.getItem('token');
+  if (isAuthenticated && token) {
+    return <Navigate to="/" replace />;
+  }
+  return <Outlet />;
+}
+
+// 1. تعريف Layout افتراضي
+function DefaultLayout() {
   const isMobile = useIsMobile();
+  return (
+    <div className="min-h-screen flex flex-col" dir="rtl">
+      <Header />
+      <main className="flex-1"><Outlet /></main>
+      <Footer />
+      {isMobile && <BottomNavigation />}
+    </div>
+  );
+}
+
+// 2. تعريف Layout فارغ
+function NoHeaderFooterLayout() {
+  return <div className="min-h-screen flex flex-col" dir="rtl"><Outlet /></div>;
+}
+
+function App() {
   return (
     <Provider store={store}>
       <PersistGate loading={<div>Loading...</div>} persistor={persistor}>
@@ -47,30 +74,29 @@ function App() {
             <Toaster />
             <Sonner />
             <BrowserRouter>
-                <ScrollToTop />
-              <div className="min-h-screen flex flex-col" dir="rtl">
-                <Header />
-                <main className="flex-1">
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route element={<PrivateRoute />}>
-                      <Route path="/courses" element={<Courses />} />
-                      <Route path="/courses/:id" element={<CourseDetails />} />
-                      <Route path="/courses/:courseId/lecture/:lectureId" element={<LectureDetails />} />
-                    </Route>
-                    <Route path="/articles" element={<Articles />} />
-                    <Route path="/services" element={<Services />} />
-                    <Route path="/portfolio" element={<Portfolio />} />
-                    <Route path="/contact" element={<Contact />} />
+              <ScrollToTop />
+              <Routes>
+                <Route element={<NoHeaderFooterLayout />}>
+                  <Route element={<PublicOnlyRoute />}>
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
                     <Route path="/verify" element={<Verify />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </main>
-                <Footer />
-                {isMobile && <BottomNavigation />}
-              </div>
+                  </Route>
+                </Route>
+                <Route element={<DefaultLayout />}>
+                  <Route path="/" element={<Index />} />
+                  <Route element={<PrivateRoute />}>
+                    <Route path="/courses" element={<Courses />} />
+                    <Route path="/courses/:id" element={<CourseDetails />} />
+                    <Route path="/courses/:courseId/lecture/:lectureId" element={<LectureDetails />} />
+                  </Route>
+                  <Route path="/articles" element={<Articles />} />
+                  <Route path="/services" element={<Services />} />
+                  <Route path="/portfolio" element={<Portfolio />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="*" element={<NotFound />} />
+                </Route>
+              </Routes>
             </BrowserRouter>
           </TooltipProvider>
         </QueryClientProvider>

@@ -22,8 +22,13 @@ const Footer = () => {
           {/* Logo Section */}
           <div className="flex flex-col items-center gap-3 mb-4">
             <a href="/" className="flex items-center gap-2 mb-2">
-              <img src="/favicon.ico" alt="شعار TEBU SOFT" className="w-10 h-10 rounded-lg shadow" />
-              <span className="font-extrabold text-xl text-blue-700 dark:text-blue-300">TEBU SOFT</span>
+              <span className="font-extrabold text-lg md:text-xl tracking-tight drop-shadow-sm">
+                <span style={{ color: '#041665FF' }}>TEBU</span>
+                <span className="text-blue-400/40" style={{ marginRight: 4, marginLeft: 4 }}> SOFT</span>
+              </span>
+              <span className="inline-flex items-center justify-center rounded-lg bg-gradient-to-tr from-blue-500 to-purple-500  shadow-md ring-2 ring-blue-400/40 ring-offset-2 ring-offset-white dark:ring-offset-gray-900 transition-all animate-glow">
+                <img src="/assests/tebusoft.jpg" alt="TEBU SOFT" className="rounded-lg object-cover h-8 w-8 md:h-10 md:w-10 drop-shadow-glow" />
+              </span>
             </a>
             <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs text-center leading-relaxed">
               منصة تعليمية متخصصة في البرمجة والتقنية، تقدم كورسات وورش عمل عالية الجودة بإشراف نخبة من المدربين العرب.

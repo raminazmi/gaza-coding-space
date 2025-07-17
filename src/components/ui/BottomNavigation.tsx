@@ -115,7 +115,7 @@ const BottomNavigation: React.FC = () => {
                 <Link to="/login">تسجيل الدخول</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all rounded">
-                <Link to="/register">التسجيل</Link>
+                <Link to="/register">إنشاء حساب</Link>
               </DropdownMenuItem>
             </>
           )}

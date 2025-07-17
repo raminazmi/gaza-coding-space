@@ -11,6 +11,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem
 } from '@/components/ui/dropdown-menu';
+import { apiBaseUrl } from '@/lib/utils';
 
 const Header = () => {
   const dispatch = useAppDispatch();
@@ -32,20 +33,30 @@ const Header = () => {
     dispatch(toggleTheme());
   };
 
-  // جلب بيانات المستخدم إذا كان هناك توكن ولم يكن هناك بيانات مستخدم
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token && !user) {
-      fetch('https://gazacodingspace.mahmoudalbatran.com/api/student', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.name) {
-            dispatch(setUser(data));
-          }
-        });
+    function fetchUserIfToken() {
+      const token = localStorage.getItem('token');
+      if (token && !user) {
+        fetch(`${apiBaseUrl}/api/student`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data && data.name) {
+              dispatch(setUser(data));
+            }
+          });
+      }
     }
+    fetchUserIfToken();
+    // استمع لتغيرات localStorage (مثلاً بعد التحقق)
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'token' && e.newValue) {
+        fetchUserIfToken();
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, [dispatch, user]);
 
   // تسجيل الخروج
@@ -59,18 +70,18 @@ const Header = () => {
     <header className="sticky top-0 z-50 w-full border-b bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl shadow-lg supports-[backdrop-filter]:bg-white/40 dark:supports-[backdrop-filter]:bg-gray-900/40 transition-all overflow-hidden" dir="rtl">
       <div className="relative z-10">
         <div className="container flex h-16 items-center justify-between px-2 md:px-6">
-        {/* Logo */}
+          {/* Logo */}
           <a href="/" className="flex items-center gap-2 flex-row mx-auto md:mx-0">
+            <span className="font-extrabold text-lg md:text-xl tracking-tight drop-shadow-sm">
+              <span style={{ color: '#041665FF' }}>TEBU</span>
+              <span className="text-blue-400/40" style={{ marginRight: 4, marginLeft: 4 }}> SOFT</span>
+            </span>
             <span className="inline-flex items-center justify-center rounded-lg bg-gradient-to-tr from-blue-500 to-purple-500  shadow-md ring-2 ring-blue-400/40 ring-offset-2 ring-offset-white dark:ring-offset-gray-900 transition-all animate-glow">
               <img src="/assests/tebusoft.jpg" alt="TEBU SOFT" className="rounded-lg object-cover h-8 w-8 md:h-10 md:w-10 drop-shadow-glow" />
             </span>
-            <span className="font-extrabold text-lg md:text-xl tracking-tight drop-shadow-sm">
-              <span style={{ color: '#041665FF' }}>TEBU</span>
-              <span  className="text-blue-400/40" style={{  marginRight: 4, marginLeft: 4 }}> SOFT</span>
-            </span>
           </a>
 
-        {/* Desktop Navigation */}
+          {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-4 flex-row-reverse">
             <ul className="flex flex-row gap-2 relative">
               {navLinks.map((link) => {
@@ -79,34 +90,41 @@ const Header = () => {
                   <li key={link.to} className="relative">
                     <Link
                       to={link.to}
-                      className={`relative px-2 md:px-3 py-1 text-base md:text-lg font-medium transition-colors duration-200
-                        ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-800 dark:text-gray-100 hover:text-blue-500 dark:hover:text-blue-300'}`}
+                      className={`relative px-2 md:px-3 py-1.5 text-base md:text-lg font-medium transition-colors duration-200
+                        ${isActive ? 'text-blue-700 dark:text-blue-200 bg-blue-100/80 dark:bg-blue-900/40 shadow-md font-extrabold rounded scale-105 ring-2 ring-blue-200/60 dark:ring-blue-900/40' : 'text-gray-800 dark:text-gray-100 hover:text-blue-500 dark:hover:text-blue-300'}
+                      `}
                     >
                       {link.label}
                       {/* Animated active indicator */}
-                      {isActive && (
-                        <span className="absolute -bottom-1 right-0 left-0 h-[3px] rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 animate-slidein" />
-                      )}
-                  </Link>
+                    </Link>
                   </li>
                 );
               })}
             </ul>
-        </nav>
+          </nav>
 
-        {/* Right Side Actions */}
+          {/* Right Side Actions */}
           <div className="flex items-center gap-2 flex-row">
             {/* User Menu + Desktop Search */}
             <div className="hidden md:flex items-center gap-2 flex-row-reverse">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full !bg-white/80 !dark:bg-gray-900/80 !text-blue-700 !shadow-none hover:bg-gradient-to-tr hover:!from-blue-500 hover:to-purple-500 hover:!text-white focus:bg-gradient-to-tr focus:from-blue-500 focus:to-purple-500 focus:text-white active:bg-gradient-to-tr active:from-blue-500 active:to-purple-500 active:text-white transition-all border border-transparent flex items-center gap-2">
-                    <FiUser className="h-5 w-5" />
-                    {user && user.name && (
-                      <span className="max-w-[120px] truncate font-semibold text-base text-foreground hidden md:inline-block">{user.name}</span>
-                    )}
-              </Button>
-            </DropdownMenuTrigger>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <div className="flex items-center gap-2 cursor-pointer">
+                    {user && user.name ? (
+                      <div className="flex items-center gap-2 cursor-pointer bg-white text-blue-700 font-semibold text-base rounded-xl px-1.5 py-1 shadow border border-blue-100 max-w-[160px] truncate">
+                        <span className="flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 w-7 h-7">
+                          <FiUser className="h-5 w-5 text-white" />
+                        </span>
+                        {user.name}
+                      </div>
+                    )
+                      :
+                      <span className="flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 w-9 h-9">
+                        <FiUser className="h-5 w-5 text-white" />
+                      </span>
+                    }
+                  </div>
+                </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-48">
                   <DropdownMenuItem onClick={handleThemeToggle} className="flex justify-between items-center gap-2 hover:bg-purple-50/80 hover:text-purple-700 focus:bg-purple-100/80 focus:text-purple-800 transition-all">
                     {effectiveTheme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
@@ -122,14 +140,14 @@ const Header = () => {
                     <>
                       <DropdownMenuItem asChild className="hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
                         <Link to="/login">تسجيل الدخول</Link>
-              </DropdownMenuItem>
+                      </DropdownMenuItem>
                       <DropdownMenuItem asChild className="hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
-                        <Link to="/register">التسجيل</Link>
-              </DropdownMenuItem>
+                        <Link to="/register">إنشاء حساب</Link>
+                      </DropdownMenuItem>
                     </>
                   )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>

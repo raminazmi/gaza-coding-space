@@ -172,7 +172,7 @@ const Index = () => {
               مرحبًا بك في منصة TEBU SOFT
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground mb-8 leading-relaxed">
-              منصة تعليمية رائدة في تعليم البرمجة وتطوير التطبيقات للطلاب في غزة وفلسطين
+              منصة تعليمية رائدة في تعليم البرمجة وتطوير التطبيقات للطلاب
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link 
@@ -417,22 +417,6 @@ const Index = () => {
               استعرض الدورات
               <FiArrowLeft className="h-5 w-5" />
             </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-12 bg-gray-50 dark:bg-gray-800">
-        <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-3 gap-8 text-center">
-            <div>
-              <h3 className="text-lg font-bold mb-4">تواصل معنا</h3>
-              <p className="text-muted-foreground">{siteConfig.contact.email}</p>
-              <p className="text-muted-foreground">{siteConfig.contact.phone}</p>
-            </div>
-            <div>
-              <h3 className="text-lg font-bold mb-4">موقعنا</h3>
-              <p className="text-muted-foreground">{siteConfig.contact.address}</p>
-            </div>
           </div>
         </div>
       </section>

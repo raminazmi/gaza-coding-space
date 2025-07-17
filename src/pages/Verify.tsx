@@ -61,7 +61,8 @@ const Verify = () => {
         localStorage.setItem('token', token);
         toast({ title: 'تم التحقق بنجاح', description: 'تم تسجيل الدخول بنجاح' });
         navigate('/');
-      } else {
+        window.location.reload();
+} else {
         toast({ title: 'خطأ', description: 'رمز التحقق غير صحيح', variant: 'destructive' });
         setCode(Array(CODE_LENGTH).fill(''));
         inputsRef.current[0]?.focus();
