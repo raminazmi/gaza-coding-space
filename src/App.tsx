@@ -28,6 +28,7 @@ import PortfolioDetails from "./pages/PortfolioDetails";
 import OrderService from "./pages/OrderService";
 import Messenger from "./pages/Messenger";
 import ChatRoom from "./pages/ChatRoom";
+import ArticleDetails from "./pages/ArticleDetails";
 
 const queryClient = new QueryClient();
 
@@ -97,6 +98,7 @@ function App() {
                     <Route path="/chat/:id" element={<ChatRoom />} />
                   </Route>
                   <Route path="/articles" element={<Articles />} />
+                  <Route path="/articles/:id" element={<ArticleDetails />} />
                   <Route path="/services" element={<Services />} />
                   <Route path="/portfolio" element={<Portfolio />} />
                   <Route path="/portfolio/:id" element={<PortfolioDetails />} />

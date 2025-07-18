@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useParams } from 'react-router-dom';
 import { apiBaseUrl } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ const OrderService = () => {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const service_id = params.get('service_id') || '';
+  const { id } = useParams();
 
   const [form, setForm] = useState({
     name: '',
@@ -24,6 +25,7 @@ const OrderService = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [service, setService] = useState<any>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -59,8 +61,21 @@ const OrderService = () => {
     }
   };
 
+  useEffect(() => {
+    setLoading(true);
+    fetch(`${apiBaseUrl}/api/service/${id}`)
+      .then(res => res.json())
+      .then(data => {
+        setService(data.service || null);
+        if (data.service && data.service.name) {
+          localStorage.setItem('breadcrumb_service_name', data.service.name);
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [id]);
+
   return (
-    <div className="container py-8 flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900" dir="rtl">
+    <div className="min-h-screen pt-0 pb-16" dir="rtl">
       <Card className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-10 w-full max-w-md mx-auto border border-gray-200 dark:border-gray-700">
         <CardHeader className="text-center mb-4 p-0">
           <CardTitle className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">

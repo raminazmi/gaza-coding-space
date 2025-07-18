@@ -187,7 +187,7 @@ const Messenger = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col md:flex-row items-center justify-center py-4 md:py-8 px-2 md:px-12" dir="rtl">
+    <div className="min-h-screen flex flex-col md:flex-row items-center justify-center py-4 md:py-8 px-2 md:px-12" dir="rtl">
       {(!selectedConv || showSidebar) && (
         <Card
           className="w-full md:w-1/4 max-w-full md:max-w-1/4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 flex-shrink-0 flex flex-col h-[90vh] mb-4 md:mb-0"

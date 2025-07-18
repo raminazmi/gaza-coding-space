@@ -34,9 +34,9 @@ const Portfolio = () => {
   const isLoading = loading || categoriesLoading;
 
   return (
-    <div className="min-h-screen py-16 bg-gradient-hero" dir="rtl">
+    <div className="min-h-screen pt-0 pb-16" dir="rtl">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <h1 className="h1 bg-gradient-primary bg-clip-text text-transparent drop-shadow-glow">
             أعمالنا
           </h1>

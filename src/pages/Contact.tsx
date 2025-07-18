@@ -29,7 +29,7 @@ const Contact = () => {
   };
 
   return (
-    <div className="container py-8 flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900" dir="rtl">
+    <div className="container py-8 flex flex-col items-center justify-center min-h-screen" dir="rtl">
       <Card className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-10 w-full max-w-md mx-auto border border-gray-200 dark:border-gray-700">
         <CardHeader className="text-center mb-4 p-0">
           <CardTitle className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">

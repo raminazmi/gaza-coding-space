@@ -1,19 +1,42 @@
 import React, { useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { FiArrowLeft, FiArrowRight, FiUsers, FiBookOpen, FiAward, FiStar, FiClock, FiPlay, FiCheck, FiCode } from 'react-icons/fi';
+import { Link, useNavigate } from 'react-router-dom';
+import { FiArrowLeft, FiArrowRight, FiUsers, FiBookOpen, FiAward, FiStar, FiClock, FiPlay, FiCheck, FiCode, FiDollarSign } from 'react-icons/fi';
 import { courses } from '@/data/courses';
 import { services } from '@/data/services';
 import { siteConfig } from '@/data';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
+import { apiBaseUrl } from '@/lib/utils';
+import CourseCardSkeleton from '@/components/ui/CourseCardSkeleton';
+import ServiceCardSkeleton from '@/components/ui/ServiceCardSkeleton';
 
 gsap.registerPlugin(ScrollTrigger, MotionPathPlugin);
 
 const Index = () => {
-  const featuredCourses = courses.filter(course => course.isPopular).slice(0, 3);
-  const featuredServices = services.filter(service => service.isPopular).slice(0, 3);
-  
+  const [featuredCourses, setFeaturedCourses] = React.useState<any[]>([]);
+  React.useEffect(() => {
+    const ids = [1, 2, 3, 4];
+    Promise.all(
+      ids.map(id =>
+        fetch(`${apiBaseUrl}/api/course-details/${id}`)
+          .then(res => res.json())
+          .then(data => data.course || null)
+          .catch(() => null)
+      )
+    ).then(courses => {
+      setFeaturedCourses(courses.filter(Boolean));
+    });
+  }, []);
+  const [featuredServices, setFeaturedServices] = React.useState<any[]>([]);
+  React.useEffect(() => {
+    fetch(`${apiBaseUrl}/api/service`)
+      .then(res => res.json())
+      .then(data => {
+        setFeaturedServices((data.services || []).slice(0, 3));
+      });
+  }, []);
+
   const heroRef = useRef<HTMLDivElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
   const coursesRef = useRef<HTMLDivElement>(null);
@@ -21,13 +44,17 @@ const Index = () => {
   const ctaRef = useRef<HTMLDivElement>(null);
   const bookIconRef = useRef<HTMLDivElement>(null);
   const codeIconRef = useRef<HTMLDivElement>(null);
+  const heroIllustration = "https://cdn.jsdelivr.net/gh/twitter/twemoji/assets/svg/1f4bb.svg";
+  const ctaIllustration = "https://cdn.jsdelivr.net/gh/twitter/twemoji/assets/svg/1f393.svg";
+
+  const navigate = useNavigate();
 
   useEffect(() => {
-    gsap.fromTo(heroRef.current, 
+    gsap.fromTo(heroRef.current,
       { opacity: 0, y: 50 },
-      { 
-        opacity: 1, 
-        y: 0, 
+      {
+        opacity: 1,
+        y: 0,
         duration: 1,
         scrollTrigger: {
           trigger: heroRef.current,
@@ -39,7 +66,7 @@ const Index = () => {
     gsap.utils.toArray(statsRef.current?.querySelectorAll('.stat-item') || []).forEach((item: any) => {
       const count = item.querySelector('h3')?.textContent?.replace('+', '') || 0;
       const obj = { num: 0 };
-      
+
       gsap.to(obj, {
         num: count,
         duration: 2,
@@ -59,11 +86,11 @@ const Index = () => {
       gsap.to(bookIconRef.current, {
         motionPath: {
           path: [
-            {x: 0, y: 0},
-            {x: -100, y: 100},
-            {x: -200, y: 200},
-            {x: -300, y: 300},
-            {x: -400, y: 400},
+            { x: 0, y: 0 },
+            { x: -100, y: 100 },
+            { x: -200, y: 200 },
+            { x: -300, y: 300 },
+            { x: -400, y: 400 },
           ],
           curviness: 1.5,
           autoRotate: false
@@ -82,11 +109,11 @@ const Index = () => {
       gsap.to(codeIconRef.current, {
         motionPath: {
           path: [
-            {x: 0, y: 0},
-            {x: 100, y: 100},
-            {x: 200, y: 200},
-            {x: 300, y: 300},
-            {x: 400, y: 400},
+            { x: 0, y: 0 },
+            { x: 100, y: 100 },
+            { x: 200, y: 200 },
+            { x: 300, y: 300 },
+            { x: 400, y: 400 },
           ],
           curviness: 1.5,
           autoRotate: false
@@ -101,11 +128,11 @@ const Index = () => {
       });
     }
 
-    gsap.fromTo(coursesRef.current?.querySelectorAll('.course-card') || [], 
+    gsap.fromTo(coursesRef.current?.querySelectorAll('.course-card') || [],
       { opacity: 0, y: 30 },
-      { 
-        opacity: 1, 
-        y: 0, 
+      {
+        opacity: 1,
+        y: 0,
         duration: 0.7,
         stagger: 0.2,
         scrollTrigger: {
@@ -115,11 +142,11 @@ const Index = () => {
       }
     );
 
-    gsap.fromTo(servicesRef.current?.querySelectorAll('.service-card') || [], 
+    gsap.fromTo(servicesRef.current?.querySelectorAll('.service-card') || [],
       { opacity: 0, x: -30 },
-      { 
-        opacity: 1, 
-        x: 0, 
+      {
+        opacity: 1,
+        x: 0,
         duration: 0.7,
         stagger: 0.2,
         scrollTrigger: {
@@ -129,10 +156,10 @@ const Index = () => {
       }
     );
 
-    gsap.fromTo(ctaRef.current, 
+    gsap.fromTo(ctaRef.current,
       { opacity: 0, scale: 0.95 },
-      { 
-        opacity: 1, 
+      {
+        opacity: 1,
         scale: 1,
         duration: 1,
         scrollTrigger: {
@@ -159,39 +186,44 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="min-h-screen overflow-x-hidden" dir="rtl">
-      <section className="relative overflow-hidden bg-gradient-hero py-20 md:py-32" ref={heroRef}>
+    <div className="" dir="rtl">
+      <section className="relative overflow-hidden bg-gradient-hero pb-20 pt-14 md:pb-20 md:pt-6" ref={heroRef}>
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-1/3 -right-1/4 w-[800px] h-[800px] bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-full blur-3xl floating"></div>
           <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gradient-to-r from-green-500/10 to-teal-500/10 rounded-full blur-3xl floating"></div>
         </div>
-        
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="text-center max-w-4xl mx-auto">
-            <h1 className="h1 bg-gradient-primary bg-clip-text text-transparent drop-shadow-glow mb-6">
+
+        <div className="mx-auto px-2 md:px-20 relative z-10 flex flex-col md:flex-row items-center gap-10">
+          <div className="flex-1 text-center md:text-right max-w-2xl mx-auto md:mx-0">
+            <h1 className="h1 bg-gradient-primary bg-clip-text text-transparent drop-shadow-glow mb-6 text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight">
               مرحبًا بك في منصة TEBU SOFT
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground mb-8 leading-relaxed">
               منصة تعليمية رائدة في تعليم البرمجة وتطوير التطبيقات للطلاب
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link 
-                to="/courses" 
-                className="inline-flex items-center gap-2 bg-gradient-primary text-white px-8 py-4 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 hover:scale-105 transform-gpu"
+            <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start items-center md:items-start">
+              <Link
+                to="/courses"
+                className="inline-flex items-center gap-2 bg-gradient-primary text-white px-8 py-4 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 hover:scale-105 transform-gpu text-lg md:text-xl"
               >
                 ابدأ التعلم الآن
                 <FiArrowLeft className="h-5 w-5" />
               </Link>
-              <Link 
-                to="/contact" 
-                className="inline-flex items-center gap-2 border-2 border-primary text-primary px-8 py-4 rounded-xl font-semibold hover:bg-primary hover:text-white transition-all duration-300 transform-gpu"
+              <Link
+                to="/contact"
+                className="inline-flex items-center gap-2 border-2 border-primary text-primary px-8 py-4 rounded-xl font-semibold hover:bg-primary hover:text-white transition-all duration-300 transform-gpu text-lg md:text-xl"
               >
                 تواصل معنا
                 <FiArrowLeft className="h-5 w-5" />
               </Link>
             </div>
           </div>
+          <div className="flex-1 flex justify-center md:justify-end items-center">
+            <img src={heroIllustration} alt="تعلم البرمجة" className="w-[340px] md:w-[420px] floating" loading="lazy" />
+          </div>
         </div>
+        {/* زخرفة SVG خلفية */}
+        <svg className="absolute left-0 top-0 w-full h-full pointer-events-none opacity-10" viewBox="0 0 1440 320"><path fill="#6366f1" fillOpacity="0.2" d="M0,160L60,170.7C120,181,240,203,360,197.3C480,192,600,160,720,133.3C840,107,960,85,1080,101.3C1200,117,1320,171,1380,197.3L1440,224L1440,0L1380,0C1320,0,1200,0,1080,0C960,0,840,0,720,0C600,0,480,0,360,0C240,0,120,0,60,0L0,0Z"></path></svg>
       </section>
 
       <section className="py-16 bg-white dark:bg-gray-900" ref={statsRef}>
@@ -230,22 +262,22 @@ const Index = () => {
       </section>
 
       <section className="py-20 bg-gray-50 dark:bg-gray-800 relative overflow-hidden" ref={coursesRef}>
-        <div 
-          ref={bookIconRef} 
+        <div
+          ref={bookIconRef}
           className="absolute top-0 right-0 z-0 opacity-20 text-primary"
         >
           <FiBookOpen className="w-16 h-16" />
         </div>
-        
+
         <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-10">
-          <path 
-            d="M100% 0 Q 80% 20%, 70% 40% T 50% 70% T 30% 90% T 0 100%" 
-            fill="none" 
-            stroke="currentColor" 
+          <path
+            d="M100% 0 Q 80% 20%, 70% 40% T 50% 70% T 30% 90% T 0 100%"
+            fill="none"
+            stroke="currentColor"
             strokeWidth="2"
           />
         </svg>
-        
+
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-12">
             <h2 className="h2 text-lg md:text-xl lg:text-2xl font-bold mb-4">الدورات المميزة</h2>
@@ -253,65 +285,74 @@ const Index = () => {
               اكتشف أفضل الدورات التعليمية في مجال البرمجة وتطوير التطبيقات
             </p>
           </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {featuredCourses.map((course) => (
-              <div 
-                key={course.id} 
-                className="bg-white dark:bg-gray-900 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden course-card transform-gpu hover:-translate-y-1"
-              >
-                <div className="relative">
-                  <img 
-                    src={course.thumbnail} 
-                    alt={course.title}
-                    className="w-full h-48 object-cover"
-                  />
-                  {course.isPopular && (
-                    <div className="absolute top-4 right-4 bg-primary text-white px-3 py-1 rounded-full text-sm font-semibold">
-                      مميز
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {featuredCourses.length === 0
+              ? [...Array(3)].map((_, i) => <CourseCardSkeleton key={i} />)
+              : featuredCourses.slice(0, 4).map(course => (
+                <div
+                  key={course.id}
+                  className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-shadow duration-300 cursor-pointer flex flex-col h-full"
+                  onClick={() => navigate(`/courses/${course.id}`)}
+                >
+                  <div className="relative">
+                    {(course.icon || course.image) && (
+                      <img
+                        src={course.icon || course.image}
+                        alt={course.name}
+                        className="w-full h-48 object-cover"
+                      />
+                    )}
+                    <div className="absolute top-4 left-4">
+                      {course.category && (
+                        <span className="bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                          {typeof course.category === 'object' ? course.category.name : course.category}
+                        </span>
+                      )}
                     </div>
-                  )}
+                  </div>
+                  <div className="p-6 flex flex-col flex-1">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{course.name}</h3>
+                    <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300 text-sm mb-4">
+                      <span className="flex items-center gap-1">
+                        <FiUsers /> {course.enroll_count ?? course.Enroll_count ?? 0} طلاب
+                      </span>
+                      <span className="h-1 w-1 bg-gray-400 rounded-full"></span>
+                      <span className="flex items-center gap-1">
+                        <FiBookOpen /> {course.lecture_count ?? course.Lecture_count ?? 0} محاضرة
+                      </span>
+                    </div>
+                    <p className="text-gray-600 dark:text-gray-300 text-base mb-5 flex-1 line-clamp-2">
+                      {course.discription || course.description}
+                    </p>
+                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100 dark:border-gray-700">
+                      <div className="flex items-center gap-2">
+                        {course.userImage && (
+                          <img src={course.userImage} alt={course.user} className="w-8 h-8 rounded-full" />
+                        )}
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{course.user}</span>
+                        <span className="text-primary font-bold text-lg flex items-center gap-1">
+                          <FiDollarSign />
+                          {course.salary ? course.salary : 'مجاني'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+
+                        <button
+                          className="rounded-xl bg-gradient-primary hover:shadow-glow px-4 py-2 text-white font-medium text-sm transition-all"
+                          onClick={e => { e.stopPropagation(); navigate(`/courses/${course.id}`); }}
+                        >
+                          التفاصيل
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="p-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-sm text-muted-foreground">{course.category}</span>
-                    <span className="text-sm text-muted-foreground">•</span>
-                    <span className="text-sm text-muted-foreground">{course.level}</span>
-                  </div>
-                  <h3 className="text-xl font-bold mb-3">{course.title}</h3>
-                  <p className="text-muted-foreground mb-4 line-clamp-2">{course.description}</p>
-                  
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-1">
-                      <FiStar className="h-4 w-4 text-yellow-500 fill-current" />
-                      <span className="text-sm font-semibold">{course.rating}</span>
-                      <span className="text-sm text-muted-foreground">({course.reviewsCount})</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <FiClock className="h-4 w-4" />
-                      <span>{course.duration} ساعة</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold text-primary">
-                      {course.isFree ? 'مجاني' : `$${course.price}`}
-                    </span>
-                    <Link 
-                      to={`/courses/${course.id}`}
-                      className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-hover transition-colors"
-                    >
-                      عرض التفاصيل
-                      <FiArrowLeft className="h-4 w-4" />
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            ))}
+              ))}
           </div>
-          
+
           <div className="text-center mt-12">
-            <Link 
+            <Link
               to="/courses"
               className="inline-flex items-center gap-2 bg-gradient-primary text-white px-8 py-4 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform-gpu hover:scale-105"
             >
@@ -323,22 +364,22 @@ const Index = () => {
       </section>
 
       <section className="py-20 bg-white dark:bg-gray-900 relative overflow-hidden" ref={servicesRef}>
-        <div 
-          ref={codeIconRef} 
+        <div
+          ref={codeIconRef}
           className="absolute top-0 left-0 z-0 opacity-20 text-primary"
         >
           <FiCode className="w-16 h-16" />
         </div>
-        
+
         <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-10">
-          <path 
-            d="M0 0 Q 20% 20%, 30% 40% T 50% 70% T 70% 90% T 100% 100%" 
-            fill="none" 
-            stroke="currentColor" 
+          <path
+            d="M0 0 Q 20% 20%, 30% 40% T 50% 70% T 70% 90% T 100% 100%"
+            fill="none"
+            stroke="currentColor"
             strokeWidth="2"
           />
         </svg>
-        
+
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-12">
             <h2 className="h2 text-lg md:text-xl lg:text-2xl font-bold mb-4">خدماتنا</h2>
@@ -346,46 +387,44 @@ const Index = () => {
               نقدم مجموعة شاملة من الخدمات التقنية لتطوير مشاريعك
             </p>
           </div>
-          
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {featuredServices.map((service) => (
-              <div 
-                key={service.id} 
-                className="bg-gray-50 dark:bg-gray-800 rounded-xl p-8 hover:shadow-lg transition-all duration-300 service-card transform-gpu hover:-translate-y-1"
-              >
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center floating">
-                    <FiCheck className="h-6 w-6 text-white" />
+            {featuredServices.length === 0
+              ? [...Array(3)].map((_, i) => <ServiceCardSkeleton key={i} />)
+              : featuredServices.map((service) => (
+                <div
+                  key={service.id}
+                  className="bg-gray-50 dark:bg-gray-800 rounded-xl p-8 hover:shadow-lg transition-all duration-300 service-card transform-gpu hover:-translate-y-1"
+                >
+                  <div className="flex items-center gap-4 mb-6">
+                    {service.image ? (
+                      <img
+                        src={service.image}
+                        alt={service.name}
+                        className="w-12 h-12 rounded-lg object-cover floating"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center floating">
+                        <FiCheck className="h-6 w-6 text-white" />
+                      </div>
+                    )}
+                    <h3 className="text-xl font-bold">{service.name}</h3>
                   </div>
-                  <h3 className="text-xl font-bold">{service.title}</h3>
-                </div>
-                
-                <p className="text-muted-foreground mb-6">{service.description}</p>
-                
-                <ul className="space-y-3 mb-6">
-                  {service.features.slice(0, 3).map((feature, index) => (
-                    <li key={index} className="flex items-center gap-2">
-                      <FiCheck className="h-4 w-4 text-primary" />
-                      <span className="text-sm">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-2xl font-bold text-primary">${service.price.starting}</span>
-                    <span className="text-sm text-muted-foreground">ابتداءً من</span>
+                  <p className="text-muted-foreground mb-6">{service.small_description || service.description}</p>
+                  <div className="flex items-center justify-between mt-6">
+                    <div>
+                      <span className="text-2xl font-bold text-primary">{service.price ? `$${service.price.starting}` : ''}</span>
+                      <span className="text-sm text-muted-foreground">{service.price ? 'ابتداءً من' : ''}</span>
+                    </div>
+                    <Link
+                      to="/services"
+                      className="inline-flex items-center gap-2 text-primary hover:text-primary-hover transition-colors"
+                    >
+                      المزيد من التفاصيل
+                      <FiArrowLeft className="h-4 w-4" />
+                    </Link>
                   </div>
-                  <Link 
-                    to="/services"
-                    className="inline-flex items-center gap-2 text-primary hover:text-primary-hover transition-colors"
-                  >
-                    المزيد من التفاصيل
-                    <FiArrowLeft className="h-4 w-4" />
-                  </Link>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
       </section>
@@ -396,29 +435,36 @@ const Index = () => {
           <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-white/10 rounded-full blur-3xl floating"></div>
           <div className="absolute bottom-1/3 right-1/3 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl floating"></div>
         </div>
-        
-        <div className="container mx-auto px-4 text-center relative z-10">
-          <h2 className="h2 text-lg md:text-xl lg:text-2xl font-bold mb-6">ابدأ رحلتك في عالم البرمجة اليوم</h2>
-          <p className="text-sm md:text-base mb-8 max-w-2xl mx-auto opacity-90">
-            انضم إلى مجتمعنا التعليمي واكتشف عالم البرمجة مع أفضل المدربين والموارد التعليمية
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link 
-              to="/register"
-              className="inline-flex items-center gap-2 bg-white text-primary px-8 py-4 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform-gpu hover:scale-105"
-            >
-              سجل الآن مجاناً
-              <FiArrowLeft className="h-5 w-5" />
-            </Link>
-            <Link 
-              to="/courses"
-              className="inline-flex items-center gap-2 border-2 border-white text-white px-8 py-4 rounded-xl font-semibold hover:bg-white hover:text-primary transition-all duration-300 transform-gpu hover:scale-105"
-            >
-              استعرض الدورات
-              <FiArrowLeft className="h-5 w-5" />
-            </Link>
+
+        <div className="container mx-auto px-2 md:px-20 relative z-10 flex flex-col md:flex-row items-center gap-10">
+          <div className="flex-1 text-center md:text-right">
+            <h2 className="h2 text-3xl md:text-4xl font-bold mb-6">ابدأ رحلتك في عالم البرمجة اليوم</h2>
+            <p className="text-lg md:text-xl mb-8 max-w-2xl mx-auto opacity-90">
+              انضم إلى مجتمعنا التعليمي واكتشف عالم البرمجة مع أفضل المدربين والموارد التعليمية
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start items-center md:items-start">
+              <Link
+                to="/register"
+                className="inline-flex items-center gap-2 bg-white text-primary px-8 py-4 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 hover:scale-105 text-lg md:text-xl"
+              >
+                سجل الآن مجاناً
+                <FiArrowLeft className="h-5 w-5" />
+              </Link>
+              <Link
+                to="/courses"
+                className="inline-flex items-center gap-2 border-2 border-white text-white px-8 py-4 rounded-xl font-semibold hover:bg-white hover:text-primary transition-all duration-300 text-lg md:text-xl"
+              >
+                استعرض الدورات
+                <FiArrowLeft className="h-5 w-5" />
+              </Link>
+            </div>
+          </div>
+          <div className="flex-1 flex justify-center md:justify-end items-center mt-10 md:mt-0">
+            <img src={ctaIllustration} alt="ابدأ رحلتك" className="w-[320px] md:w-[380px] floating" loading="lazy" />
           </div>
         </div>
+        {/* زخرفة SVG خلفية */}
+        <svg className="absolute right-0 bottom-0 w-full h-full pointer-events-none opacity-10" viewBox="0 0 1440 320"><path fill="#fff" fillOpacity="0.1" d="M0,288L60,272C120,256,240,224,360,197.3C480,171,600,149,720,154.7C840,160,960,192,1080,197.3C1200,203,1320,181,1380,170.7L1440,160L1440,320L1380,320C1320,320,1200,320,1080,320C960,320,840,320,720,320C600,320,480,320,360,320C240,320,120,320,60,320L0,320Z"></path></svg>
       </section>
     </div>
   );

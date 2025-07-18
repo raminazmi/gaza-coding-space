@@ -36,6 +36,9 @@ const CourseDetails = () => {
       .then(data => {
         setCourse(data.course || null);
         setIsFavorite(data.course?.is_favorite || false);
+        if (data.course && data.course.name) {
+          localStorage.setItem('breadcrumb_course_name', data.course.name);
+        }
       })
       .finally(() => setLoading(false));
 

@@ -57,6 +57,12 @@ const LectureDetails = () => {
       setCourse(courseRes.course);
       setChapters(courseRes.course?.chapters || []);
       setExpanded(courseRes.course?.chapters?.[0]?.id?.toString() || null);
+      if (courseRes.course && courseRes.course.name) {
+        localStorage.setItem('breadcrumb_course_name', courseRes.course.name);
+      }
+      if (lectureRes.Lecture && lectureRes.Lecture.name) {
+        localStorage.setItem('breadcrumb_lecture_name', lectureRes.Lecture.name);
+      }
     }).finally(() => setLoading(false));
   }, [courseId, lectureId]);
 
@@ -269,122 +275,122 @@ const LectureDetails = () => {
             </div>
           </div>
 
-          {/* Mobile Aside - Top */}
+                  {/* Mobile Aside - Top */}
           <aside className="w-full bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-xl mb-4 md:hidden">
             <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 border-b border-gray-100 dark:border-gray-700 pb-2">محتوى الدورة</h2>
-            {chapters.length > 5 ? (
-              <div className="overflow-y-auto max-h-[350px]">
-                {chapters.map((chapter) => (
-                  <div key={chapter.id} className="mb-3">
-                    <button
+          {chapters.length > 5 ? (
+            <div className="overflow-y-auto max-h-[350px]">
+              {chapters.map((chapter) => (
+                <div key={chapter.id} className="mb-3">
+                  <button
                       className="w-full flex justify-between items-center px-3 py-3 rounded-xl bg-blue-50 hover:bg-blue-100 font-bold text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 mb-2 transition-all"
-                      onClick={() => setExpanded(expanded === chapter.id ? null : chapter.id)}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm">{chapter.name}</span>
+                    onClick={() => setExpanded(expanded === chapter.id ? null : chapter.id)}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm">{chapter.name}</span>
                         <span className="text-xs text-gray-400 dark:text-gray-400">
                           ({chapter.lectures?.length || 0} محاضرة)
                         </span>
-                      </div>
-                      {expanded === chapter.id ? <FiChevronUp /> : <FiChevronDown />}
-                    </button>
-                    <div
-                      className={`transition-all duration-300 overflow-hidden ${expanded === chapter.id ? 'max-h-96' : 'max-h-0'}`}
-                      dir="rtl"
-                    >
-                      <ul className="space-y-1 px-1 pt-1">
-                        {chapter.lectures?.length === 0 && (
-                          <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
-                        )}
-                        {chapter.lectures?.map((lec) => (
-                          <li
-                            key={lec.id}
-                            className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${String(lec.id) === String(lectureId)
+                    </div>
+                    {expanded === chapter.id ? <FiChevronUp /> : <FiChevronDown />}
+                  </button>
+                  <div
+                    className={`transition-all duration-300 overflow-hidden ${expanded === chapter.id ? 'max-h-96' : 'max-h-0'}`}
+                    dir="rtl"
+                  >
+                    <ul className="space-y-1 px-1 pt-1">
+                      {chapter.lectures?.length === 0 && (
+                        <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
+                      )}
+                      {chapter.lectures?.map((lec) => (
+                        <li
+                          key={lec.id}
+                          className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${String(lec.id) === String(lectureId)
                               ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm dark:from-gray-800 dark:to-gray-900 dark:border-blue-900'
                               : 'hover:bg-gray-50 dark:hover:bg-gray-800'
-                              }`}
-                            onClick={() => navigate(`/courses/${courseId}/lecture/${lec.id}`)}
-                          >
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${lec.is_watch?.status === 'endWatch'
-                              ? 'bg-green-500 border-green-500 text-white'
-                              : 'border-gray-300'
-                              }`}>
-                              {lec.is_watch?.status === 'endWatch' && (
-                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
-                            </div>
-                            <span className={`text-sm truncate ${String(lec.id) === String(lectureId)
+                            }`}
+                          onClick={() => navigate(`/courses/${courseId}/lecture/${lec.id}`)}
+                        >
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${lec.is_watch?.status === 'endWatch'
+                            ? 'bg-green-500 border-green-500 text-white'
+                            : 'border-gray-300'
+                            }`}>
+                            {lec.is_watch?.status === 'endWatch' && (
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
+                          <span className={`text-sm truncate ${String(lec.id) === String(lectureId)
                               ? 'font-bold text-blue-700 dark:text-blue-300'
                               : 'text-gray-600 dark:text-gray-300'
-                              }`}>
-                              {lec.name}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                            }`}>
+                            {lec.name}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <>
-                {chapters.map((chapter) => (
-                  <div key={chapter.id} className="mb-3">
-                    <button
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              {chapters.map((chapter) => (
+                <div key={chapter.id} className="mb-3">
+                  <button
                       className="w-full flex justify-between items-center px-3 py-3 rounded-xl bg-blue-50 hover:bg-blue-100 font-bold text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 mb-2 transition-all"
-                      onClick={() => setExpanded(expanded === chapter.id ? null : chapter.id)}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm">{chapter.name}</span>
+                    onClick={() => setExpanded(expanded === chapter.id ? null : chapter.id)}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm">{chapter.name}</span>
                         <span className="text-xs text-gray-400 dark:text-gray-400">({chapter.lectures?.length || 0} محاضرة)</span>
-                      </div>
-                      {expanded === chapter.id ? <FiChevronUp /> : <FiChevronDown />}
-                    </button>
-                    <div
-                      className={`transition-all duration-300 overflow-hidden ${expanded === chapter.id ? 'max-h-96' : 'max-h-0'}`}
-                      style={{ direction: 'rtl' }}
-                    >
-                      <ul className="space-y-1 px-1 pt-1">
-                        {chapter.lectures?.length === 0 && (
-                          <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
-                        )}
-                        {chapter.lectures?.map((lec) => (
-                          <li
-                            key={lec.id}
-                            className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${String(lec.id) === String(lectureId)
+                    </div>
+                    {expanded === chapter.id ? <FiChevronUp /> : <FiChevronDown />}
+                  </button>
+                  <div
+                    className={`transition-all duration-300 overflow-hidden ${expanded === chapter.id ? 'max-h-96' : 'max-h-0'}`}
+                    style={{ direction: 'rtl' }}
+                  >
+                    <ul className="space-y-1 px-1 pt-1">
+                      {chapter.lectures?.length === 0 && (
+                        <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
+                      )}
+                      {chapter.lectures?.map((lec) => (
+                        <li
+                          key={lec.id}
+                          className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${String(lec.id) === String(lectureId)
                               ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm dark:from-gray-800 dark:to-gray-900 dark:border-blue-900'
                               : 'hover:bg-gray-50 dark:hover:bg-gray-800'
-                              }`}
-                            onClick={() => navigate(`/courses/${courseId}/lecture/${lec.id}`)}
-                          >
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${lec.is_watch?.status === 'endWatch'
-                              ? 'bg-green-500 border-green-500 text-white'
-                              : 'border-gray-300'
-                              }`}>
-                              {lec.is_watch?.status === 'endWatch' && (
-                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
-                            </div>
-                            <span className={`text-sm truncate ${String(lec.id) === String(lectureId)
+                            }`}
+                          onClick={() => navigate(`/courses/${courseId}/lecture/${lec.id}`)}
+                        >
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${lec.is_watch?.status === 'endWatch'
+                            ? 'bg-green-500 border-green-500 text-white'
+                            : 'border-gray-300'
+                            }`}>
+                            {lec.is_watch?.status === 'endWatch' && (
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
+                          <span className={`text-sm truncate ${String(lec.id) === String(lectureId)
                               ? 'font-bold text-blue-700 dark:text-blue-300'
                               : 'text-gray-600 dark:text-gray-300'
-                              }`}>
-                              {lec.name}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                            }`}>
+                            {lec.name}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                ))}
-              </>
-            )}
+                </div>
+              ))}
+            </>
+          )}
           </aside>
-
+          
           {!hasMyDiscussionWithTeacher && (
             <form onSubmit={handleSend} className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl shadow-lg p-5 flex flex-col gap-4 border border-blue-100 dark:border-blue-900">
               <div className="flex flex-col gap-1">
