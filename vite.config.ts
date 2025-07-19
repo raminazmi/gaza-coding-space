@@ -18,9 +18,4 @@ export default defineConfig(({ mode }) => ({
       "@public": path.resolve(__dirname, "./public"),
     },
   },
-  build: {
-    rollupOptions: {
-      external: ['axios']
-    }
-  },
 }));
