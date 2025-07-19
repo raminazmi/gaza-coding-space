@@ -19,32 +19,8 @@ const analytics = getAnalytics(app);
 const messaging = getMessaging(app);
 export { messaging, getToken, onMessage };
 
-getToken(messaging, { vapidKey: 'BCNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7iS70wV68ipFAkmjUTZmaAEdyE3B0whxZIAcAyjOQ' }).then((currentToken) => {
-    if (currentToken) {
-        console.log(currentToken)
-        const userToken = localStorage.getItem('token');
-        axios.post(
-            'https://gazacodingspace.mahmoudalbatran.com/api/device-tokens',
-            {
-                token: currentToken,
-                device_name: window.navigator.userAgent
-            },
-            {
-                headers: userToken ? { Authorization: `Bearer ${userToken}` } : {}
-            }
-        );
-    } else {
-        console.log('No registration token available. Request permission to generate one.');
-    }
-}).catch((err) => {
-    console.log('An error occurred while retrieving token. ', err);
-});
-
 onMessage(messaging, (payload) => {
     console.log("Message received. ", payload);
-    if (payload.data && payload.data.code) {
-        alert(payload.data.code);
-    } else {
-        alert('تم استقبال إشعار بدون بيانات مرفقة');
-    }
+    // ...
+    alert(payload)
 });
