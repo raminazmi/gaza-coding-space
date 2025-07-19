@@ -57,24 +57,24 @@ const Login = () => {
         <div className="text-center mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">تسجيل الدخول</h1>
           <p className="text-base md:text-lg text-gray-500 dark:text-gray-300">أدخل بريدك الإلكتروني لتسجيل الدخول</p>
-        </div>
+            </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <div>
             <Label htmlFor="email" className="text-sm md:text-base dark:text-gray-200">البريد الإلكتروني</Label>
             <Input id="email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-xl shadow-elegant h-12 mt-2 text-base md:text-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 placeholder:text-gray-400 dark:placeholder:text-gray-500" required />
-          </div>
+                </div>
           <Button type="submit" size="lg" className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl mt-4 py-3 text-lg transition-all duration-200 disabled:opacity-60 dark:bg-blue-700 dark:hover:bg-blue-800 dark:text-white" disabled={isSubmitting}>
             {isSubmitting ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
           </Button>
-        </form>
+            </form>
         <div className="text-center mt-6">
           <span className="text-gray-500 dark:text-gray-300 text-sm md:text-base">
             ليس لديك حساب؟{' '}
             <Link to="/register" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
               إنشاء حساب جديد
-            </Link>
+                </Link>
           </span>
-        </div>
+            </div>
       </div>
     </div>
   );

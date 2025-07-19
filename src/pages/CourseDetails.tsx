@@ -55,7 +55,6 @@ const CourseDetails = () => {
     }
   }, [courseId]);
 
-  // بعد جلب البيانات وتعيين course، إذا كان هناك شباتر ولم يتم تعيين expanded بعد، اجعل أول شابتر مفتوحًا
   useEffect(() => {
     if (
       !didAutoExpand &&
@@ -119,7 +118,7 @@ const CourseDetails = () => {
 
 
   function cleanMediaUrl(url: string) {
-    const storagePrefix = 'https://gazacodingspace.mahmoudalbatran.com/storage/';
+    const storagePrefix = `${apiBaseUrl}/storage/`;
     if (url?.startsWith(storagePrefix)) {
       return url.replace(storagePrefix, '');
     }

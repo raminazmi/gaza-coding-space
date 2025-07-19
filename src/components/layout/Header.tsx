@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '@/hooks';
 import { toggleTheme } from '@/store/slices/themeSlice';
 import { FiUser, FiMoon, FiSun, FiCode, FiMessageCircle } from 'react-icons/fi';
-import { setUser, logout } from '@/store/slices/userSlice';
+import { setUser, logout, fetchUser } from '@/store/slices/userSlice';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -31,7 +31,6 @@ const Header = () => {
   const location = useLocation();
   const pathnames = location.pathname.split('/').filter(Boolean);
   const breadcrumbItems = React.useMemo(() => {
-    // منطق خاص لمسار طلب خدمة
     if (pathnames[0] === 'order-service') {
       return [
         { to: '/', label: 'الرئيسية' },
@@ -44,19 +43,15 @@ const Header = () => {
       ...pathnames.map((segment, idx) => {
         const to = '/' + pathnames.slice(0, idx + 1).join('/');
         let label = decodeURIComponent(segment);
-        // تخصيص اسم الدورة
         if (pathnames[0] === 'courses' && idx === 1) {
           label = localStorage.getItem('breadcrumb_course_name') || label;
         }
-        // تخصيص اسم المحاضرة
         if (pathnames[0] === 'courses' && pathnames[2] === 'lecture' && idx === 3) {
           label = localStorage.getItem('breadcrumb_lecture_name') || label;
         }
-        // تخصيص عنوان المقالة
         if (pathnames[0] === 'articles' && idx === 1) {
           label = localStorage.getItem('breadcrumb_article_title') || label;
         }
-        // تخصيص اسم الخدمة
         if (pathnames[0] === 'order-service' && idx === 1) {
           label = localStorage.getItem('breadcrumb_service_name') || label;
         }
@@ -86,29 +81,11 @@ const Header = () => {
   };
 
   useEffect(() => {
-    function fetchUserIfToken() {
-      const token = localStorage.getItem('token');
-      if (token && !user) {
-        fetch(`${apiBaseUrl}/api/student`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-          .then(res => res.json())
-          .then(data => {
-            if (data && data.name) {
-              dispatch(setUser(data));
-            }
-          });
-      }
+    const token = localStorage.getItem('token');
+    if (token) {
+      dispatch(fetchUser());
     }
-    fetchUserIfToken();
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'token' && e.newValue) {
-        fetchUserIfToken();
-      }
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, [dispatch, user]);
+  }, [dispatch]);
 
   // تسجيل الخروج
   const handleLogout = () => {
@@ -170,12 +147,12 @@ const Header = () => {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <div className="flex items-center gap-2 cursor-pointer">
-                      {user && user.name ? (
+                      {isAuthenticated && user ? (
                         <div className="flex items-center gap-2 cursor-pointer bg-white dark:bg-gray-900 text-blue-700 dark:text-blue-200 font-semibold text-base rounded-xl px-1.5 py-1 shadow border border-blue-100 dark:border-blue-900 max-w-[160px] truncate transition-colors">
                           <span className="flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 w-7 h-7">
                             <FiUser className="h-5 w-5 text-white" />
                           </span>
-                          {user.name}
+                          {user.name ? user.name : 'مستخدم'}
                         </div>
                       )
                         :

@@ -32,17 +32,14 @@ import ArticleDetails from "./pages/ArticleDetails";
 
 const queryClient = new QueryClient();
 
-// مكون الحماية
 function PrivateRoute() {
   const isAuthenticated = useAppSelector((state) => state.user.isAuthenticated);
-  const token = localStorage.getItem('token') ;
-  if (!token) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
   return <Outlet />;
 }
 
-// مكون حماية للصفحات العامة فقط
 function PublicOnlyRoute() {
   const isAuthenticated = useAppSelector((state) => state.user.isAuthenticated);
   const token = localStorage.getItem('token');
@@ -52,7 +49,6 @@ function PublicOnlyRoute() {
   return <Outlet />;
 }
 
-// 1. تعريف Layout افتراضي
 function DefaultLayout() {
   const isMobile = useIsMobile();
   return (
@@ -65,9 +61,14 @@ function DefaultLayout() {
   );
 }
 
-// 2. تعريف Layout فارغ
 function NoHeaderFooterLayout() {
   return <div className="min-h-screen flex flex-col" dir="rtl"><Outlet /></div>;
+}
+
+function ReduxLogger() {
+  const reduxUser = useAppSelector((state) => state.user.user);
+  const reduxAuth = useAppSelector((state) => state.user.isAuthenticated);
+  return null;
 }
 
 function App() {
@@ -80,6 +81,7 @@ function App() {
             <Sonner />
             <BrowserRouter>
               <ScrollToTop />
+              <ReduxLogger />
               <Routes>
                 <Route element={<NoHeaderFooterLayout />}>
                   <Route element={<PublicOnlyRoute />}>

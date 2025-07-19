@@ -1,4 +1,5 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import { apiBaseUrl } from '@/lib/utils';
 
 interface UserState {
   isAuthenticated: boolean;
@@ -43,4 +44,32 @@ const userSlice = createSlice({
 });
 
 export const { loginSuccess, logout, updateUser, setUser } = userSlice.actions;
+
+export const fetchUser = createAsyncThunk(
+  'user/fetchUser',
+  async (_, { rejectWithValue, dispatch }) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('No token');
+      const res = await fetch(`${apiBaseUrl}/api/student`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const contentType = res.headers.get('content-type');
+      let rawResponse = await res.clone().text();
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('الاستجابة ليست JSON (غالباً تم إرجاع صفحة HTML أو حدث خطأ في السيرفر)');
+      }
+      const data = await res.json();
+      if (data && (data.id || data.email)) {
+        dispatch(setUser(data));
+        return data;
+      } else {
+        throw new Error('بيانات المستخدم غير صالحة');
+      }
+    } catch (err: any) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
+
 export default userSlice.reducer; 
