@@ -2,17 +2,14 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '@/hooks';
 import { toggleTheme } from '@/store/slices/themeSlice';
-import { FiUser, FiMoon, FiSun, FiCode, FiMessageCircle } from 'react-icons/fi';
-import { setUser, logout, fetchUser } from '@/store/slices/userSlice';
-import { Button } from '@/components/ui/button';
+import { FiUser, FiMoon, FiSun, FiMessageCircle, FiBell } from 'react-icons/fi';
+import { logout, fetchUser } from '@/store/slices/userSlice';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem
 } from '@/components/ui/dropdown-menu';
-import { apiBaseUrl } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -22,6 +19,7 @@ import {
   BreadcrumbSeparator
 } from '@/components/ui/breadcrumb';
 import React from 'react';
+import { messaging, getToken } from '../../../firebase';
 
 const Header = () => {
   const dispatch = useAppDispatch();
@@ -57,12 +55,12 @@ const Header = () => {
         }
         if (label === 'courses') label = 'الدورات';
         if (label === 'profile') label = 'الملف الشخصي';
+        if (label === 'notifications') label = 'الإشعارات';
         if (label === 'articles') label = 'المقالات';
         if (label === 'services') label = 'الخدمات';
         if (label === 'portfolio') label = 'أعمالنا';
         if (label === 'contact') label = 'تواصل معنا';
         if (label === 'chat') label = 'الدردشة';
-        if (label === 'lecture') label = 'محاضرة';
         if (label === 'order-service') label = 'طلب خدمة';
         return { to, label };
       })
@@ -82,7 +80,7 @@ const Header = () => {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token');
     if (token) {
       dispatch(fetchUser());
     }
@@ -94,55 +92,154 @@ const Header = () => {
     window.location.reload();
   };
 
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifCount, setNotifCount] = useState(0);
+  const [notifLoading, setNotifLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const token = localStorage.getItem('token');
+      // جلب عدد غير المقروءة
+      fetch('https://gazacodingspace.mahmoudalbatran.com/api/notifications/count', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+        .then(res => res.json())
+        .then(count => setNotifCount(count))
+        .catch(() => setNotifCount(0));
+      // جلب آخر 5 إشعارات
+      fetch('https://gazacodingspace.mahmoudalbatran.com/api/notifications?page=1', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+        .then(res => res.json())
+        .then(data => setNotifications(data.notifications?.data?.slice(0, 5) || []))
+        .catch(() => setNotifications([]));
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated && Notification.permission === 'granted') {
+      (async () => {
+        const registration = await navigator.serviceWorker.ready;
+        getToken(messaging, { vapidKey: 'CNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7iS70wV68ipFAkmjUTZmaAEdyE3B0whxZIAcAyjOQebase', serviceWorkerRegistration: registration })
+          .then((currentToken) => {
+            if (currentToken) {
+              const token = localStorage.getItem('token');
+              const formData = new FormData();
+              formData.append('token', currentToken);
+              fetch('https://gazacodingspace.mahmoudalbatran.com/api/device-tokens', {
+                method: 'POST',
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                body: formData,
+              });
+            }
+          });
+      })();
+    }
+  }, [isAuthenticated]);
+
+  const handleNotifOpen = (open: boolean) => {
+    setNotifOpen(open);
+    if (open && isAuthenticated) {
+      const token = localStorage.getItem('token');
+      fetch('https://gazacodingspace.mahmoudalbatran.com/api/notifications/read_at', {
+        method: 'PUT',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+    }
+  };
+
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl shadow-lg supports-[backdrop-filter]:bg-white/40 dark:supports-[backdrop-filter]:bg-gray-900/40 transition-all overflow-hidden" dir="rtl">
-        <div className="relative z-10">
-          <div className="container flex h-16 items-center justify-between px-2 md:px-6">
-            <a href="/" className="flex items-center gap-2 flex-row mx-auto md:mx-0">
+    <header className="sticky top-0 z-50 w-full border-b bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl shadow-lg supports-[backdrop-filter]:bg-white/40 dark:supports-[backdrop-filter]:bg-gray-900/40 transition-all overflow-hidden" dir="rtl">
+      <div className="relative z-10">
+        <div className="container flex h-16 items-center justify-between px-2 md:px-6">
+            <a href="/" className="flex items-center gap-2 flex-row mx-0">
+              <span className="inline-flex items-center justify-center rounded-lg bg-gradient-to-tr from-blue-500 to-purple-500 shadow-md ring-2 ring-blue-400/40 ring-offset-2 ring-offset-white dark:ring-offset-gray-900 transition-all animate-glow">
+              <img src="/assests/tebusoft.jpg" alt="TEBU SOFT" className="rounded-lg object-cover h-8 w-8 md:h-10 md:w-10 drop-shadow-glow" />
+            </span>
               <span className="font-extrabold text-lg md:text-xl tracking-tight drop-shadow-sm">
                 <span className="text-[#041665] dark:text-blue-200">TEBU</span>
                 <span className="text-blue-400/40 dark:text-purple-300/60 mx-1">SOFT</span>
               </span>
-              <span className="inline-flex items-center justify-center rounded-lg bg-gradient-to-tr from-blue-500 to-purple-500 shadow-md ring-2 ring-blue-400/40 ring-offset-2 ring-offset-white dark:ring-offset-gray-900 transition-all animate-glow">
-                <img src="/assests/tebusoft.jpg" alt="TEBU SOFT" className="rounded-lg object-cover h-8 w-8 md:h-10 md:w-10 drop-shadow-glow" />
-              </span>
-            </a>
+          </a>
 
-            <nav className="hidden md:flex items-center gap-4 flex-row-reverse">
-              <ul className="flex flex-row gap-2 relative">
-                {navLinks.map((link) => {
-                  const isActive = location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));
-                  return (
-                    <li key={link.to} className="relative">
-                      <Link
-                        to={link.to}
+          <nav className="hidden md:flex items-center gap-4 flex-row-reverse">
+            <ul className="flex flex-row gap-2 relative">
+              {navLinks.map((link) => {
+                const isActive = location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));
+                return (
+                  <li key={link.to} className="relative">
+                    <Link
+                      to={link.to}
                         className={`relative px-2 md:px-3 py-1.5 text-base md:text-lg font-medium transition-colors duration-200
                         ${isActive ? 'text-blue-700 dark:text-blue-200 bg-blue-100/80 dark:bg-blue-900/40 shadow-md font-extrabold rounded scale-105 ring-2 ring-blue-200/60 dark:ring-blue-900/40' : 'text-gray-800 dark:text-gray-100 hover:text-blue-500 dark:hover:text-blue-300'}
                       `}
-                      >
-                        {link.label}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </nav>
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
 
-            <div className="flex items-center gap-2 flex-row">
+          <div className="flex items-center gap-2 flex-row">
               <Link
                 to="/chat"
-                className={`relative hidden md:flex items-center justify-center rounded-full p-2 transition-colors hover:bg-blue-100/60 dark:hover:bg-blue-900/40 ${location.pathname.startsWith('/chat') ? 'bg-blue-100/80 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200' : 'text-blue-700 dark:text-gray-100'}`}
+                className={`relative flex items-center justify-center rounded-full p-2 transition-colors hover:bg-blue-100/60 dark:hover:bg-blue-900/40 ${location.pathname.startsWith('/chat') ? 'bg-blue-100/80 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200' : 'text-blue-700 dark:text-gray-100'}`}
                 title="الدردشة"
               >
                 <FiMessageCircle className="h-6 w-6" />
                 {/* <Badge className="absolute -top-1 -right-1 bg-red-500 text-white">2</Badge> */}
               </Link>
+              {/* Notification Icon */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={`relative rounded-full p-2 transition-colors hover:bg-blue-100/60 dark:hover:bg-blue-900/40 ${notifOpen ? 'bg-blue-100/80 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200' : 'text-blue-700 dark:text-gray-100'}`}
+                    title="الإشعارات"
+                    onClick={() => handleNotifOpen(!notifOpen)}
+                  >
+                    <FiBell className="h-6 w-6" />
+                    {notifCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold animate-pulse">{notifCount}</span>
+                    )}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="bottom" align="center" className="w-80 max-w-xs p-2 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 animate-fade-in">
+                  <div className="font-bold text-base text-gray-800 dark:text-gray-100 mb-2">الإشعارات</div>
+                  {notifLoading ? (
+                    <div className="text-center py-4">جاري التحميل...</div>
+                  ) : notifications.length === 0 ? (
+                    <div className="text-center py-4 text-gray-500">لا توجد إشعارات</div>
+                  ) : (
+                    <ul className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+                      {notifications.map((n) => (
+                        <li key={n.id} className={`rounded-lg p-3 border ${n.read_at ? 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700' : 'bg-blue-50/60 dark:bg-blue-900/40 border-blue-200 dark:border-blue-700'}`}>
+                          <div className="flex flex-col gap-1">
+                            <span className="font-bold text-sm text-gray-800 dark:text-gray-100">{n.type?.split('\\').pop() || 'إشعار جديد'}</span>
+                            <div className="flex justify-between items-center gap-1">
+                              <span className="text-xs text-gray-500 dark:text-gray-300">{new Date(n.created_at).toLocaleString('ar-EG')}</span>
+                              <span className="text-end">
+                                {!n.read_at && <span className="inline-block mt-1 px-2 py-0.5 rounded bg-blue-500 text-white text-xs w-fit">غير مقروء</span>}
+                              </span>
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="mt-2 text-center">
+                    <Link to="/notifications" className="text-blue-600 hover:underline font-bold">عرض المزيد</Link>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
               {/* User Menu + Desktop Search */}
               <div className="hidden md:flex items-center gap-2 flex-row-reverse">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <div className="flex items-center gap-2 cursor-pointer">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <div className="flex items-center gap-2 cursor-pointer">
                       {isAuthenticated && user ? (
                         <div className="flex items-center gap-2 cursor-pointer bg-white dark:bg-gray-900 text-blue-700 dark:text-blue-200 font-semibold text-base rounded-xl px-1.5 py-1 shadow border border-blue-100 dark:border-blue-900 max-w-[160px] truncate transition-colors">
                           <span className="flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 w-7 h-7 overflow-hidden">
@@ -153,50 +250,50 @@ const Header = () => {
                                 className="w-7 h-7 rounded-full object-cover"
                               />
                             ) : (
-                              <FiUser className="h-5 w-5 text-white" />
-                            )}
-                          </span>
-                          {user.name ? user.name : 'مستخدم'}
-                        </div>
-                      )
-                        :
-                        <span className="flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 w-9 h-9">
                           <FiUser className="h-5 w-5 text-white" />
+                            )}
                         </span>
-                      }
-                    </div>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48">
-                    <DropdownMenuItem onClick={handleThemeToggle} className="flex justify-between items-center gap-2 hover:bg-purple-50/80 hover:text-purple-700 focus:bg-purple-100/80 focus:text-purple-800 transition-all">
+                          {user.name ? user.name : 'مستخدم'}
+                      </div>
+                    )
+                      :
+                      <span className="flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 w-9 h-9">
+                        <FiUser className="h-5 w-5 text-white" />
+                      </span>
+                    }
+                  </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48">
+                  <DropdownMenuItem onClick={handleThemeToggle} className="flex justify-between items-center gap-2 hover:bg-purple-50/80 hover:text-purple-700 focus:bg-purple-100/80 focus:text-purple-800 transition-all">
                       {theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
                       {theme === 'dark' ? <FiSun className="h-4 w-4" /> : <FiMoon className="h-4 w-4" />}
-                    </DropdownMenuItem>
-                    {isAuthenticated && user ? (
-                      <>
+                  </DropdownMenuItem>
+                  {isAuthenticated && user ? (
+                    <>
                         <DropdownMenuItem asChild className="hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
                           <Link to="/profile">الملف الشخصي</Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
-                          تسجيل الخروج
-                        </DropdownMenuItem>
-                      </>
-                    ) : (
-                      <>
-                        <DropdownMenuItem asChild className="hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
-                          <Link to="/login">تسجيل الدخول</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild className="hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
+                      <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
+                        تسجيل الخروج
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <>
+                      <DropdownMenuItem asChild className="hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
+                        <Link to="/login">تسجيل الدخول</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
                           <Link to="/register">إنشاء حساب</Link>
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
-      </header>
+      </div>
+    </header>
       {/* Breadcrumb */}
       {location.pathname !== '/' && (
         <div className="w-fit flex justify-start pt-4 pb-3 px-2 md:px-8">

@@ -332,7 +332,7 @@ const Index = () => {
                           <FiDollarSign />
                           {course.salary ? course.salary : 'مجاني'}
                         </span>
-                      </div>
+                    </div>
                       <div className="flex items-center gap-3">
 
                         <button
@@ -405,10 +405,10 @@ const Index = () => {
                   </div>
                     )}
                     <h3 className="text-xl font-bold">{service.name}</h3>
-                  </div>
+                </div>
                   <p className="text-muted-foreground mb-6">{service.small_description || service.description}</p>
                   <div className="flex items-center justify-between mt-6">
-                    <div>
+                  <div>
                       <span className="text-2xl font-bold text-primary">{service.price ? `$${service.price.starting}` : ''}</span>
                       <span className="text-sm text-muted-foreground">{service.price ? 'ابتداءً من' : ''}</span>
                   </div>

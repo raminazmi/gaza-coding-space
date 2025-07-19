@@ -3,8 +3,14 @@ import { apiBaseUrl } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { FiUser, FiMail, FiPhone, FiCamera, FiEdit2 } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiCamera, FiEdit2, FiBell } from 'react-icons/fi';
 import Loading from '@/components/ui/Loading';
+import { messaging, getToken, onMessage } from '../../firebase';
+import { deleteToken } from 'firebase/messaging';
+import { sendDeviceTokenToBackend } from '@/lib/sendDeviceTokenToBackend';
+import { toast } from '@/components/ui/use-toast';
+
+const VAPID_KEY = 'CNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7iS70wV68ipFAkmjUTZmaAEdyE3B0whxZIAcAyjOQebase';
 
 const Profile = () => {
   const [user, setUser] = useState<any>(null);
@@ -16,6 +22,7 @@ const Profile = () => {
   const [form, setForm] = useState({ name: '', email: '', phone_number: '' });
   const [photo, setPhoto] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [notifStatus, setNotifStatus] = useState<'enabled' | 'disabled' | 'pending'>('pending');
 
   useEffect(() => {
     setLoading(true);
@@ -34,6 +41,26 @@ const Profile = () => {
       })
       .catch(() => setError('تعذر جلب بيانات المستخدم'))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    // استقبال الإشعار في الواجهة
+    const unsubscribe = onMessage(messaging, (payload) => {
+      toast({
+        title: `🔔 ${payload.notification?.title || 'إشعار جديد'}`,
+        description: payload.notification?.body || '',
+        duration: 6000,
+      });
+    });
+    // تحقق من حالة الإشعارات
+    if (Notification.permission === 'granted') {
+      setNotifStatus('enabled');
+    } else if (Notification.permission === 'denied') {
+      setNotifStatus('disabled');
+    } else {
+      setNotifStatus('pending');
+    }
+    return () => unsubscribe();
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,6 +127,44 @@ const Profile = () => {
     }
   };
 
+  const handleEnableNotifications = async () => {
+    setNotifStatus('pending');
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: await navigator.serviceWorker.ready });
+        if (currentToken) {
+          await sendDeviceTokenToBackend(currentToken);
+          setNotifStatus('enabled');
+          alert('تم تفعيل إشعارات المتصفح بنجاح!');
+        } else {
+          setNotifStatus('disabled');
+          alert('تعذر الحصول على رمز الإشعار.');
+        }
+      } else {
+        setNotifStatus('disabled');
+        alert('يجب السماح بالإشعارات من إعدادات المتصفح.');
+      }
+    } catch (err) {
+      setNotifStatus('disabled');
+      alert('حدث خطأ أثناء تفعيل الإشعارات');
+      console.error(err);
+    }
+  };
+
+  const handleDisableNotifications = async () => {
+    setNotifStatus('pending');
+    try {
+      await deleteToken(messaging);
+      setNotifStatus('disabled');
+      alert('تم إيقاف إشعارات المتصفح لهذا الجهاز.');
+    } catch (err) {
+      alert('حدث خطأ أثناء إيقاف الإشعارات');
+      setNotifStatus('enabled');
+      console.error(err);
+    }
+  };
+
   if (loading) return <Loading />;
 
   return (
@@ -137,6 +202,7 @@ const Profile = () => {
         <CardContent className="p-0">
           {success && <div className="bg-green-100 text-green-800 rounded p-3 mb-4 text-center">{success}</div>}
           {error && <div className="bg-red-100 text-red-800 rounded p-3 mb-4 text-center">{error}</div>}
+
           <form onSubmit={handleProfileUpdate} className="flex flex-col gap-6">
             <div>
               <label htmlFor="name" className="block mb-1 font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2"><FiUser /> الاسم</label>

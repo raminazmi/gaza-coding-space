@@ -1,11 +1,10 @@
 import React from 'react';
-import { FiHome, FiBookOpen, FiFileText, FiBriefcase, FiLayers, FiMail, FiMenu, FiUser, FiSun, FiMoon, FiMessageCircle } from 'react-icons/fi';
+import { FiHome, FiBookOpen, FiFileText, FiBriefcase, FiLayers, FiMail, FiMenu, FiUser, FiSun, FiMoon } from 'react-icons/fi';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { useAppSelector, useAppDispatch } from '@/hooks';
 import { toggleTheme } from '@/store/slices/themeSlice';
 import { logout } from '@/store/slices/userSlice';
 import { Link, useLocation } from 'react-router-dom';
-import { Badge } from '@/components/ui/badge';
 
 const navItems = [
   { label: 'الرئيسية', href: '/', icon: <FiHome className="h-5 w-5 mb-0.5" /> },
@@ -16,7 +15,7 @@ const navItems = [
   { label: 'تواصل معنا', href: '/contact', icon: <FiMail className="h-5 w-5 mb-0.5" /> },
 ];
 
-const mainItems = navItems.slice(0, 3); // Show 3 main items + المزيد + user
+const mainItems = navItems.slice(0, 3);
 const moreItems = navItems.slice(3);
 
 const BottomNavigation: React.FC = () => {
@@ -36,7 +35,6 @@ const BottomNavigation: React.FC = () => {
     window.location.reload();
   };
 
-  // Helper to check if link is active (exact or startsWith for subroutes)
   const isActive = (href: string) => {
     if (href === '/') return location.pathname === '/';
     return location.pathname.startsWith(href);
@@ -67,25 +65,6 @@ const BottomNavigation: React.FC = () => {
           </Link>
         );
       })}
-      {/* Chat Icon */}
-      <Link
-        to="/chat"
-        className={`relative flex flex-col items-center text-[11px] font-bold px-1.5 py-0.5 gap-0.5 rounded-lg transition-all
-          ${isActive('/chat') ? 'text-blue-600 dark:text-blue-400' : 'text-primary'}
-          hover:bg-primary/10 focus:bg-primary/10 active:bg-primary/20`}
-      >
-        <span className={`transition-all ${isActive('/chat') ? 'scale-110' : 'opacity-80'}`}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <FiMessageCircle className={`h-5 w-5 mb-0.5 transition-all ${isActive('/chat') ? 'text-blue-600 dark:text-blue-400 drop-shadow-glow' : 'text-primary'}`} />
-        </span>
-        الدردشة
-        {/* Badge for new messages (replace 0 with actual count if available) */}
-        {/* <Badge className="absolute -top-1 -right-1 bg-red-500 text-white">2</Badge> */}
-        {isActive('/chat') && (
-          <span className="absolute -top-2 left-1/2 -translate-x-1/2 w-6 h-1 rounded-b-xl bg-gradient-to-t from-blue-500/80 to-blue-400/0 animate-bounce-up shadow-lg" />
-        )}
-      </Link>
-      {/* المزيد */}
       {moreItems.length > 0 && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -105,7 +84,6 @@ const BottomNavigation: React.FC = () => {
           </DropdownMenuContent>
         </DropdownMenu>
       )}
-      {/* User/Profile Dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="flex flex-col items-center text-[11px] font-bold text-primary px-1.5 py-0.5 gap-0.5 rounded-lg transition-all hover:bg-primary/10 focus:bg-primary/10 active:bg-primary/20 focus:outline-none">

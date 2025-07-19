@@ -30,6 +30,7 @@ import Messenger from "./pages/Messenger";
 import ChatRoom from "./pages/ChatRoom";
 import ArticleDetails from "./pages/ArticleDetails";
 import Profile from "./pages/Profile";
+import Notifications from "./pages/Notifications";
 
 const queryClient = new QueryClient();
 
@@ -100,6 +101,7 @@ function App() {
                     <Route path="/chat" element={<Messenger />} />
                     <Route path="/chat/:id" element={<ChatRoom />} />
                     <Route path="/profile" element={<Profile />} />
+                    <Route path="/notifications" element={<Notifications />} />
                   </Route>
                   <Route path="/articles" element={<Articles />} />
                   <Route path="/articles/:id" element={<ArticleDetails />} />

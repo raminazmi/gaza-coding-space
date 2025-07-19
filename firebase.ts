@@ -1,0 +1,50 @@
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import axios from 'axios';
+
+const firebaseConfig = {
+    apiKey: "AIzaSyDmfyHHxvOeoy0pi3hNPD4N61EFCFQHCpk",
+    authDomain: "gazacoding-8d421.firebaseapp.com",
+    projectId: "gazacoding-8d421",
+    storageBucket: "gazacoding-8d421.firebasestorage.app",
+    messagingSenderId: "67710457100",
+    appId: "1:67710457100:web:dd88db9a25dcdcd8d6e529",
+    measurementId: "G-YV7LL7LMDL"
+};
+
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+
+const messaging = getMessaging(app);
+export { messaging, getToken, onMessage };
+
+getToken(messaging, { vapidKey: 'BCNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7iS70wV68ipFAkmjUTZmaAEdyE3B0whxZIAcAyjOQ' }).then((currentToken) => {
+    if (currentToken) {
+        console.log(currentToken)
+        const userToken = localStorage.getItem('token');
+        axios.post(
+            'https://gazacodingspace.mahmoudalbatran.com/api/device-tokens',
+            {
+                token: currentToken,
+                device_name: window.navigator.userAgent
+            },
+            {
+                headers: userToken ? { Authorization: `Bearer ${userToken}` } : {}
+            }
+        );
+    } else {
+        console.log('No registration token available. Request permission to generate one.');
+    }
+}).catch((err) => {
+    console.log('An error occurred while retrieving token. ', err);
+});
+
+onMessage(messaging, (payload) => {
+    console.log("Message received. ", payload);
+    if (payload.data && payload.data.code) {
+        alert(payload.data.code);
+    } else {
+        alert('تم استقبال إشعار بدون بيانات مرفقة');
+    }
+});
