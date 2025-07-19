@@ -56,6 +56,7 @@ const Header = () => {
           label = localStorage.getItem('breadcrumb_service_name') || label;
         }
         if (label === 'courses') label = 'الدورات';
+        if (label === 'profile') label = 'الملف الشخصي';
         if (label === 'articles') label = 'المقالات';
         if (label === 'services') label = 'الخدمات';
         if (label === 'portfolio') label = 'أعمالنا';
@@ -87,7 +88,6 @@ const Header = () => {
     }
   }, [dispatch]);
 
-  // تسجيل الخروج
   const handleLogout = () => {
     localStorage.removeItem('token');
     dispatch(logout());
@@ -99,7 +99,6 @@ const Header = () => {
       <header className="sticky top-0 z-50 w-full border-b bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl shadow-lg supports-[backdrop-filter]:bg-white/40 dark:supports-[backdrop-filter]:bg-gray-900/40 transition-all overflow-hidden" dir="rtl">
         <div className="relative z-10">
           <div className="container flex h-16 items-center justify-between px-2 md:px-6">
-            {/* Logo */}
             <a href="/" className="flex items-center gap-2 flex-row mx-auto md:mx-0">
               <span className="font-extrabold text-lg md:text-xl tracking-tight drop-shadow-sm">
                 <span className="text-[#041665] dark:text-blue-200">TEBU</span>
@@ -110,7 +109,6 @@ const Header = () => {
               </span>
             </a>
 
-            {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-4 flex-row-reverse">
               <ul className="flex flex-row gap-2 relative">
                 {navLinks.map((link) => {
@@ -131,9 +129,7 @@ const Header = () => {
               </ul>
             </nav>
 
-            {/* Right Side Actions */}
             <div className="flex items-center gap-2 flex-row">
-              {/* Chat Icon */}
               <Link
                 to="/chat"
                 className={`relative hidden md:flex items-center justify-center rounded-full p-2 transition-colors hover:bg-blue-100/60 dark:hover:bg-blue-900/40 ${location.pathname.startsWith('/chat') ? 'bg-blue-100/80 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200' : 'text-blue-700 dark:text-gray-100'}`}
@@ -149,8 +145,16 @@ const Header = () => {
                     <div className="flex items-center gap-2 cursor-pointer">
                       {isAuthenticated && user ? (
                         <div className="flex items-center gap-2 cursor-pointer bg-white dark:bg-gray-900 text-blue-700 dark:text-blue-200 font-semibold text-base rounded-xl px-1.5 py-1 shadow border border-blue-100 dark:border-blue-900 max-w-[160px] truncate transition-colors">
-                          <span className="flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 w-7 h-7">
-                            <FiUser className="h-5 w-5 text-white" />
+                          <span className="flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 w-7 h-7 overflow-hidden">
+                            {user.profile_photo_path || user.profile_photo_url ? (
+                              <img
+                                src={user.profile_photo_url || user.profile_photo_path}
+                                alt={user.name || 'مستخدم'}
+                                className="w-7 h-7 rounded-full object-cover"
+                              />
+                            ) : (
+                              <FiUser className="h-5 w-5 text-white" />
+                            )}
                           </span>
                           {user.name ? user.name : 'مستخدم'}
                         </div>
@@ -169,6 +173,9 @@ const Header = () => {
                     </DropdownMenuItem>
                     {isAuthenticated && user ? (
                       <>
+                        <DropdownMenuItem asChild className="hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
+                          <Link to="/profile">الملف الشخصي</Link>
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
                           تسجيل الخروج
                         </DropdownMenuItem>

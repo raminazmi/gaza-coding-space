@@ -103,7 +103,7 @@ const Profile = () => {
   if (loading) return <Loading />;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 py-8 px-2" dir="rtl">
+    <div className="min-h-screen pt-4 pb-16 px-2" dir="rtl">
       <Card className="w-full max-w-xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 md:p-10 flex flex-col gap-6">
         <CardHeader className="flex flex-col items-center gap-2 mb-2 p-0">
           <div className="relative group mb-2">

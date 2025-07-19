@@ -109,7 +109,17 @@ const BottomNavigation: React.FC = () => {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="flex flex-col items-center text-[11px] font-bold text-primary px-1.5 py-0.5 gap-0.5 rounded-lg transition-all hover:bg-primary/10 focus:bg-primary/10 active:bg-primary/20 focus:outline-none">
-            <FiUser className="h-5 w-5 mb-0.5" />
+            <span className="flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 w-5 h-5 overflow-hidden mb-0.5">
+              {user && (user.profile_photo_path || user.profile_photo_url) ? (
+                <img
+                  src={user.profile_photo_url || user.profile_photo_path}
+                  alt={user.name || 'مستخدم'}
+                  className="w-[22px] h-[22px] rounded-full object-cover"
+                />
+              ) : (
+                <FiUser className="h-5 w-5 text-white" />
+              )}
+            </span>
             {user && user.name ? (
               <span className="max-w-[48px] truncate font-semibold text-[10px] text-foreground">{user.name}</span>
             ) : (
@@ -124,6 +134,9 @@ const BottomNavigation: React.FC = () => {
           </DropdownMenuItem>
           {isAuthenticated && user ? (
             <>
+              <DropdownMenuItem asChild className="hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all rounded">
+                <Link to="/profile">الملف الشخصي</Link>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-1 hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all rounded">
                 تسجيل الخروج
               </DropdownMenuItem>
