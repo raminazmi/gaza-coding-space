@@ -24,6 +24,7 @@ const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 
 const messaging = getMessaging(app);
+export { messaging, getToken, onMessage };
 getToken(messaging, { vapidKey: 'BCNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7iS70wV68ipFAkmjUTZmaAEdyE3B0whxZIAcAyjOQ' }).then((currentToken) => {
     if (currentToken) {
         // Send the token to your server and update the UI if necessary
@@ -46,5 +47,5 @@ getToken(messaging, { vapidKey: 'BCNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7
 onMessage(messaging, (payload) => {
     console.log("Message received. ", payload);
     // ...
-    alert(payload.data.code)
+    alert(payload.data)
 });
