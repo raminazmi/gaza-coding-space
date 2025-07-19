@@ -19,7 +19,7 @@ import {
   BreadcrumbSeparator
 } from '@/components/ui/breadcrumb';
 import React from 'react';
-import { messaging, getToken } from '../../../firebase';
+import { messaging, getToken } from '../../firebase';
 
 const Header = () => {
   const dispatch = useAppDispatch();

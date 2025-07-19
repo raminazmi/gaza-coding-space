@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { FiUser, FiMail, FiPhone, FiCamera, FiEdit2, FiBell } from 'react-icons/fi';
 import Loading from '@/components/ui/Loading';
-import { messaging, getToken, onMessage } from '../../firebase';
+import { messaging, getToken, onMessage } from '../firebase';
 import { deleteToken } from 'firebase/messaging';
 import { sendDeviceTokenToBackend } from '@/lib/sendDeviceTokenToBackend';
 import { toast } from '@/components/ui/use-toast';
