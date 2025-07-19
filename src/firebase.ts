@@ -27,13 +27,14 @@ const messaging = getMessaging(app);
 export { messaging, getToken, onMessage };
 getToken(messaging, { vapidKey: 'BCNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7iS70wV68ipFAkmjUTZmaAEdyE3B0whxZIAcAyjOQ' }).then((currentToken) => {
     if (currentToken) {
-        // Send the token to your server and update the UI if necessary
-        // ...
-        console.log(currentToken)
-        axios.post('/device-tokens', {
+        const userToken = localStorage.getItem('token');
+        axios.post('https://gazacodingspace.mahmoudalbatran.com/api/device-tokens', {
             token: currentToken,
             device_name: window.navigator.userAgent
-        },)
+        },
+        {
+            headers: userToken ? { Authorization: `Bearer ${userToken}` } : {}
+        });
     } else {
         // Show permission request UI
         console.log('No registration token available. Request permission to generate one.');
