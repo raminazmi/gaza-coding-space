@@ -18,19 +18,11 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage(function(payload) {
   console.log("Received background message ", payload);
 
-  // استخراج البيانات المهمة
-  const notificationData = {
-    title: payload.data.title || payload.notification?.title || 'إشعار جديد',
-    body: payload.data.body || payload.notification?.body || '',
-    icon: payload.data.icon || payload.notification?.icon || '/favicon.ico',
-    url: payload.data.url || '/'
-  };
-
-  const notificationTitle = notificationData.title;
+  const notificationTitle = payload.notification.title;
   const notificationOptions = {
-    body: notificationData.body,
-    icon: notificationData.icon,
-    data: { url: notificationData.url }
+    body: payload.notification.body,
+    icon: payload.notification.icon || '/favicon.ico',
+    data: { url: payload.notification.click_action || '/' }
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
@@ -38,19 +30,14 @@ messaging.onBackgroundMessage(function(payload) {
 
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
-  
   const url = event.notification.data?.url || '/';
-  
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then(function(clientList) {
-      // حاول فتح في نافذة موجودة
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
       for (const client of clientList) {
         if (client.url === url && 'focus' in client) {
           return client.focus();
         }
       }
-      
-      // إذا لم توجد نافذة، افتح جديدة
       if (clients.openWindow) {
         return clients.openWindow(url);
       }

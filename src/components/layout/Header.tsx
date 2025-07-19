@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/breadcrumb';
 import React from 'react';
 import { messaging, getToken } from '../../firebase';
-import axios from 'axios';
 
 const Header = () => {
   const dispatch = useAppDispatch();
@@ -118,58 +117,37 @@ const Header = () => {
     }
   }, [isAuthenticated]);
 
-useEffect(() => {
-  if (isAuthenticated && Notification.permission === 'granted') {
-    (async () => {
-      try {
+  useEffect(() => {
+    if (isAuthenticated && Notification.permission === 'granted') {
+      (async () => {
         const registration = await navigator.serviceWorker.ready;
-        const currentToken = await getToken(messaging, { 
-          vapidKey: 'CNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7iS70wV68ipFAkmjUTZmaAEdyE3B0whxZIAcAyjOQebase', 
-          serviceWorkerRegistration: registration 
-        });
-
-        if (currentToken) {
-          const token = localStorage.getItem('token');
-          
-          // استخدم JSON بدلاً من FormData
-          const response = await axios.post(
-            'https://gazacodingspace.mahmoudalbatran.com/api/device-tokens',
-            { token: currentToken },
-            {
-              headers: {
-                Authorization: token ? `Bearer ${token}` : '',
-                'Content-Type': 'application/json'
-              }
+        getToken(messaging, { vapidKey: 'CNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7iS70wV68ipFAkmjUTZmaAEdyE3B0whxZIAcAyjOQebase', serviceWorkerRegistration: registration })
+          .then((currentToken) => {
+            if (currentToken) {
+              const token = localStorage.getItem('token');
+              const formData = new FormData();
+              formData.append('token', currentToken);
+              fetch('https://gazacodingspace.mahmoudalbatran.com/api/device-tokens', {
+                method: 'POST',
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                body: formData,
+              });
             }
-          );
-          
-          console.log('Token saved successfully:', response.data);
-        }
-      } catch (error) {
-        console.error('Error saving device token:', error);
-      }
-    })();
-  }
-}, [isAuthenticated]);
+          });
+      })();
+    }
+  }, [isAuthenticated]);
 
-const handleNotifOpen = (open: boolean) => {
-  setNotifOpen(open);
-  if (open && isAuthenticated) {
-    const token = localStorage.getItem('token');
-    
-    // أضف معالجة الأخطاء
-    fetch('https://gazacodingspace.mahmoudalbatran.com/api/notifications/read_at', {
-      method: 'PUT',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-    .then(response => {
-      if (response.ok) {
-        setNotifCount(0);
-      }
-    })
-    .catch(error => console.error('Error marking notifications as read:', error));
-  }
-};
+  const handleNotifOpen = (open: boolean) => {
+    setNotifOpen(open);
+    if (open && isAuthenticated) {
+      const token = localStorage.getItem('token');
+      fetch('https://gazacodingspace.mahmoudalbatran.com/api/notifications/read_at', {
+        method: 'PUT',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+    }
+  };
 
   return (
     <>
