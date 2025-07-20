@@ -29,11 +29,11 @@ getToken(messaging, { vapidKey: 'BCNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7
     if (currentToken) {
         const userToken = localStorage.getItem('token');
         axios.post('https://gazacodingspace.mahmoudalbatran.com/api/device-tokens', {
-            token: currentToken,
+                token: currentToken,
             device_name: window.navigator.userAgent
-        },
-        {
-            headers: userToken ? { Authorization: `Bearer ${userToken}` } : {}
+            },
+            {
+                headers: userToken ? { Authorization: `Bearer ${userToken}` } : {}
         });
     } else {
         // Show permission request UI
