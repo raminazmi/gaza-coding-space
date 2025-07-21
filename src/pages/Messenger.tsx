@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-// @ts-ignore
 import Pusher from 'pusher-js';
 import { apiBaseUrl } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -7,69 +6,127 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import Loading from '@/components/ui/Loading';
 import { Input } from '@/components/ui/input';
-import { FiSend } from 'react-icons/fi';
-import { FiPaperclip } from 'react-icons/fi';
+import { FiSend, FiPaperclip } from 'react-icons/fi';
 
-// نقل دالة formatDate إلى هنا (أعلى الملف)
-const formatDate = (dateString: string) => {
+// Interfaces
+interface User {
+  id: number;
+  name: string;
+  profile_photo_url?: string;
+  isOnline?: boolean;
+}
+
+interface Message {
+  id: string;
+  conversation_id: number;
+  user_id: number;
+  body: string;
+  created_at: string;
+  created_date: string;
+  user: User;
+  file_url?: string;
+  file_name?: string;
+  is_temp?: boolean;
+  message?: string;
+}
+
+interface Conversation {
+  id: number;
+  participants: User[];
+  last_message: {
+    body: string;
+    created_date: string;
+    file_name?: string;
+  };
+  new_messages: number;
+  updated_date: string;
+}
+
+interface Channel {
+  bind: (name: string, callback: (data: any) => void) => Channel;
+  unbind: (name: string, callback?: (data: any) => void) => Channel;
+  name: string;
+}
+
+// Date formatting function
+const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
   return date.toLocaleString('ar-EG', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   });
 };
 
 const Messenger = () => {
-  const [conversations, setConversations] = useState<any[]>([]);
-  const [loadingConvs, setLoadingConvs] = useState(true);
-  const [selectedConv, setSelectedConv] = useState<any>(null);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [loadingMsgs, setLoadingMsgs] = useState(false);
-  const [input, setInput] = useState('');
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const chatContainerRef = useRef<HTMLDivElement | null>(null);
-  const [showSidebar, setShowSidebar] = useState(true);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [loadingConvs, setLoadingConvs] = useState<boolean>(true);
+  const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loadingMsgs, setLoadingMsgs] = useState<boolean>(false);
+  const [input, setInput] = useState<string>('');
+  const [sending, setSending] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  const [alertAudio] = useState<HTMLAudioElement>(new Audio('assets/mixkit-correct-answer-tone-2870.wav'));
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const [showSidebar, setShowSidebar] = useState<boolean>(true);
   const isMobile = window.innerWidth < 768;
-  const [authUser, setAuthUser] = useState<any>(null);
-  const pusherRef = useRef<any>(null);
-  const channelsRef = useRef<any[]>([]);
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const pusherRef = useRef<Pusher | null>(null);
+  const channelsRef = useRef<Channel[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  console.log('messages:', messages);
-  // تهيئة Pusher
   useEffect(() => {
     pusherRef.current = new Pusher('8a691dd97a7cb6368d0b', {
       cluster: 'ap2',
-      forceTLS: true
+      forceTLS: true,
     });
+    pusherRef.current.connection.bind('connected', () => {
+      console.log('Connected to Pusher');
+    });
+    pusherRef.current.connection.bind('error', (err) => {
+      console.error('Pusher connection error:', err);
+    });
+
+    alertAudio.addEventListener('ended', () => {
+      alertAudio.currentTime = 0;
+    });
+
     return () => {
       pusherRef.current?.disconnect();
+      alertAudio.removeEventListener('ended', () => {});
     };
   }, []);
-  
-  // جلب المحادثات
+
   const fetchConversations = async () => {
     setLoadingConvs(true);
     const token = localStorage.getItem('token');
-    const res = await fetch(`${apiBaseUrl}/api/conversations`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    const data = await res.json();
-    setConversations(Array.isArray(data) ? data : []);
-    setLoadingConvs(false);
-    // إذا لم يتم اختيار محادثة بعد وهناك محادثات، اختر الأولى تلقائياً
-    if ((!selectedConv || !selectedConv.id) && Array.isArray(data) && data.length > 0) {
-      setSelectedConv(data[0]);
-      fetchMessages(data[0].id);
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/conversations`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data: Conversation[] = await res.json();
+      if (Array.isArray(data)) {
+        data.forEach((conv) => {
+          if (conv.participants && conv.participants[0]) {
+            conv.participants[0].isOnline = false;
+          }
+        });
+      }
+      setConversations(data);
+      setLoadingConvs(false);
+      if ((!selectedConv || !selectedConv.id) && data.length > 0) {
+        setSelectedConv(data[0]);
+        fetchMessages(data[0].id);
+      }
+    } catch (e) {
+      setLoadingConvs(false);
     }
   };
 
-  // جلب الرسائل
   const fetchMessages = async (convId: number) => {
     setLoadingMsgs(true);
     setError('');
@@ -85,19 +142,16 @@ const Messenger = () => {
         return;
       }
       const text = await res.text();
-      try {
-        const data = JSON.parse(text);
-        if (data && data.messages && Array.isArray(data.messages.data)) {
-          const formattedMessages = data.messages.data.map((msg: any) => ({
+      const data = JSON.parse(text);
+      if (data?.messages?.data && Array.isArray(data.messages.data)) {
+        const formattedMessages: Message[] = data.messages.data
+          .map((msg: any) => ({
             ...msg,
-            created_date: formatDate(msg.created_at)
-          }));
-          setMessages(formattedMessages);
-        } else {
-          setMessages([]);
-        }
-      } catch (e) {
-        setError('استجابة غير متوقعة من الخادم.');
+            created_date: formatDate(msg.created_at),
+          }))
+          .reverse();
+        setMessages(formattedMessages);
+      } else {
         setMessages([]);
       }
     } catch (e) {
@@ -108,7 +162,6 @@ const Messenger = () => {
     }
   };
 
-  // تحديث القراءة
   const markAsRead = async (convId: number) => {
     try {
       const token = localStorage.getItem('token');
@@ -116,72 +169,81 @@ const Messenger = () => {
         method: 'PUT',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      setConversations(prev => prev.map(conv => conv.id === convId ? { ...conv, new_messages: 0 } : conv));
-    } catch (err) { }
+      setConversations((prev) =>
+        prev.map((conv) => (conv.id === convId ? { ...conv, new_messages: 0 } : conv))
+      );
+    } catch (err) {}
   };
 
-
-  // الاشتراك في قنوات المحادثات - تم التعديل
   useEffect(() => {
     if (!pusherRef.current) return;
-    
-    // فصل القنوات القديمة
-    channelsRef.current.forEach(channel => {
+
+    channelsRef.current.forEach((channel) => {
       channel.unbind('new-message');
-      pusherRef.current.unsubscribe(channel.name);
+      channel.unbind('pusher:member_added');
+      channel.unbind('pusher:member_removed');
+      pusherRef.current?.unsubscribe(channel.name);
     });
-    
     channelsRef.current = [];
-    
-    conversations.forEach(conv => {
-      const channel = pusherRef.current.subscribe(`conversation.${conv.id}`);
-      
-      channel.bind('new-message', (data: any) => {
-        console.log('new message from pusher', data);
-        const newMessage = {
-          ...data.message,
-          created_date: formatDate(data.message.created_at),
-          user: data.user
-        };
-        
-        setMessages(prev => {
-          // إزالة الرسالة المؤقتة إن وجدت
-          const filtered = prev.filter(msg => !msg.id.startsWith('temp-'));
-          return [...filtered, newMessage];
-        });
-        
-        if (selectedConv?.id === data.message.conversation_id) {
+
+    conversations.forEach((conv) => {
+      const channel = pusherRef.current!.subscribe(`conversation.${conv.id}`);
+      channel.bind('new-message', (data: { message: Message; user: User }) => {
+        console.log('Received event on channel:', `conversation.${conv.id}`, data);
+        // تحديث الرسائل فقط إذا كانت تخص المحادثة الحالية
+        if (selectedConv?.id == data.message.conversation_id) {
+          const newMessage: Message = {
+            ...data.message,
+            created_date: formatDate(data.message.created_at),
+            user: data.user,
+          };
+          setMessages((prev) => {
+            const filtered = prev.filter((msg) => !msg.id.startsWith('temp-'));
+            const result = [...filtered, newMessage].sort(
+              (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            );
+            console.log('Updated messages:', result);
+            return result;
+          });
           markAsRead(selectedConv.id);
+          alertAudio.play();
         }
-        
-        setConversations(prev => prev.map(c => {
-          if (c.id === data.message.conversation_id) {
-            return {
-              ...c,
-              last_message: {
-                ...c.last_message,
-                body: data.message.body,
-                created_date: formatDate(data.message.created_at)
-              },
-              new_messages: c.id === selectedConv?.id ? 0 : (c.new_messages || 0) + 1
-            };
-          }
-          return c;
-        }));
       });
-      
+
+      pusherRef.current!.subscribe('Chat').bind('pusher:member_added', (member: { id: number }) => {
+        setConversations((prev) =>
+          prev.map((c) => {
+            if (c.participants && c.participants[0]?.id === member.id) {
+              return { ...c, participants: [{ ...c.participants[0], isOnline: true }] };
+            }
+            return c;
+          })
+        );
+      });
+      pusherRef.current!.subscribe('Chat').bind('pusher:member_removed', (member: { id: number }) => {
+        setConversations((prev) =>
+          prev.map((c) => {
+            if (c.participants && c.participants[0]?.id === member.id) {
+              return { ...c, participants: [{ ...c.participants[0], isOnline: false }] };
+            }
+            return c;
+          })
+        );
+      });
+
       channelsRef.current.push(channel);
     });
-    
+
     return () => {
-      channelsRef.current.forEach(channel => {
+      channelsRef.current.forEach((channel) => {
         channel.unbind('new-message');
-        pusherRef.current.unsubscribe(channel.name);
+        channel.unbind('pusher:member_added');
+        channel.unbind('pusher:member_removed');
+        pusherRef.current?.unsubscribe(channel.name);
       });
     };
-  }, [conversations, selectedConv]); // إضافة selectedConv كاعتمادية
+  }, [conversations, selectedConv]);
 
-  // دالة لجلب بيانات المستخدم
   const fetchAuthUser = async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -190,51 +252,35 @@ const Messenger = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return;
-      const data = await res.json();
+      const data: User = await res.json();
       setAuthUser(data);
-    } catch (e) {
-      // يمكن إضافة معالجة خطأ هنا
-    }
+    } catch (e) {}
   };
 
-  // جلب بيانات المستخدم عند تحميل الصفحة
   useEffect(() => {
     fetchAuthUser();
   }, []);
 
-  // عند تحميل المحادثات، انتظر حتى يتم جلب بيانات المستخدم
   useEffect(() => {
     if (authUser) fetchConversations();
-    // eslint-disable-next-line
   }, [authUser]);
 
-  // عند تغيير المحادثة المختارة جلب الرسائل وتحديث القراءة
   useEffect(() => {
     if (selectedConv?.id) {
       fetchMessages(selectedConv.id);
       markAsRead(selectedConv.id);
     }
-    // eslint-disable-next-line
   }, [selectedConv]);
 
-  // التمرير إلى أحدث رسالة
   useEffect(() => {
     if (messages.length > 0) {
-      setTimeout(() => {
-        try {
-          const endRef = messagesEndRef.current;
-          const container = chatContainerRef.current;
-          if (endRef && container) {
-            const scrollPosition = endRef.offsetTop - container.offsetTop;
-            container.scrollTo({
-              top: scrollPosition,
-              behavior: 'smooth'
-            });
-          }
-        } catch (e) {
-          // تجاهل الخطأ أو أضف log إذا أردت
+      try {
+        const endRef = messagesEndRef.current;
+        const container = chatContainerRef.current;
+        if (endRef && container) {
+          container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
         }
-      }, 50);
+      } catch (e) {}
     }
   }, [messages]);
 
@@ -242,12 +288,10 @@ const Messenger = () => {
     setShowSidebar(!isMobile);
   }, [isMobile]);
 
-  // عند إرسال رسالة - تم التعديل
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((!input.trim() && !selectedFile) || !selectedConv || !authUser) return;
-    // إضافة رسالة مؤقتة (مع اسم الملف إن وجد)
-    const tempMessage = {
+    const tempMessage: Message = {
       id: `temp-${Date.now()}`,
       conversation_id: selectedConv.id,
       user_id: authUser.id,
@@ -256,9 +300,9 @@ const Messenger = () => {
       created_date: formatDate(new Date().toISOString()),
       user: authUser,
       is_temp: true,
-      file_name: selectedFile?.name || undefined
+      file_name: selectedFile?.name,
     };
-    setMessages(prev => [...prev, tempMessage]);
+    setMessages((prev) => [...prev, tempMessage]);
     setInput('');
     setSending(true);
     setError('');
@@ -266,9 +310,7 @@ const Messenger = () => {
     const formData = new FormData();
     formData.append('conversation_id', selectedConv.id.toString());
     formData.append('message', input);
-    if (selectedFile) {
-      formData.append('file', selectedFile);
-    }
+    if (selectedFile) formData.append('file', selectedFile);
     try {
       const res = await fetch(`${apiBaseUrl}/api/messages`, {
         method: 'POST',
@@ -277,34 +319,29 @@ const Messenger = () => {
       });
       if (!res.ok) {
         setError('حدث خطأ أثناء إرسال الرسالة');
-        setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
+        setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
       }
     } catch (e) {
       setError('حدث خطأ أثناء إرسال الرسالة');
-      setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
+      setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
     } finally {
       setSending(false);
       setSelectedFile(null);
     }
   };
 
-  const handleSelectConv = (conv: any) => {
+  const handleSelectConv = (conv: Conversation) => {
     setSelectedConv(conv);
     if (isMobile) setShowSidebar(false);
   };
 
-  // تحديث getOtherParticipant ليستخدم authUser?.id
-  const getOtherParticipant = (conv: any) => {
-    return (conv.participants || []).find((p: any) => p.id !== authUser?.id) || conv.participants?.[0];
-  };
+  const getOtherParticipant = (conv: Conversation): User | undefined =>
+    (conv.participants || []).find((p) => p.id !== authUser?.id) || conv.participants?.[0];
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row items-center justify-center py-4 md:py-8 px-2 md:px-12" dir="rtl">
       {(!selectedConv || showSidebar) && (
-        <Card
-          className="w-full md:w-1/4 max-w-full md:max-w-1/4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 flex-shrink-0 flex flex-col h-[90vh] mb-4 md:mb-0"
-          style={{ zIndex: 20 }}
-        >
+        <Card className="w-full md:w-1/4 max-w-full md:max-w-1/4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 flex-shrink-0 flex flex-col h-[90vh] mb-4 md:mb-0" style={{ zIndex: 20 }}>
           <CardHeader className="flex flex-row items-center gap-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-t-2xl p-4">
             <CardTitle className="text-lg font-bold text-gray-800 dark:text-gray-100">الدردشة والاستفسارات</CardTitle>
             <span className="ml-auto w-3 h-3 rounded-full bg-green-400 inline-block"></span>
@@ -326,23 +363,28 @@ const Messenger = () => {
                     style={{ minHeight: 64 }}
                     onClick={() => handleSelectConv(conv)}
                   >
-                    <Avatar>
-                      <AvatarImage src={other?.profile_photo_url} alt={other?.name} />
-                      <AvatarFallback>{(other?.name || 'م').slice(0, 1)}</AvatarFallback>
-                    </Avatar>
+                    <div className="relative">
+                      <Avatar>
+                        <AvatarImage src={other?.profile_photo_url} alt={other?.name} />
+                        <AvatarFallback>{(other?.name || 'م').slice(0, 1)}</AvatarFallback>
+                      </Avatar>
+                      {other?.isOnline && <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-gray-800 dark:text-gray-100 text-base truncate">{other?.name || 'مستخدم'}</div>
                       <div className="text-sm text-gray-500 dark:text-gray-300 truncate">
-                        {conv.last_message?.file_name
-                          ? <span className="flex items-center gap-1"><FiPaperclip />{conv.last_message.file_name}</span>
-                          : conv.last_message?.body || 'لا توجد رسائل بعد'}
+                        {conv.last_message?.file_name ? (
+                          <span className="flex items-center gap-1">
+                            <FiPaperclip /> {conv.last_message.file_name}
+                          </span>
+                        ) : (
+                          conv.last_message?.body || 'لا توجد رسائل بعد'
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1 min-w-[70px]">
                       <span className="text-xs text-gray-400">{conv.last_message?.created_date || conv.updated_date || ''}</span>
-                      {conv.new_messages > 0 && (
-                        <Badge className="bg-red-500 text-white px-2 py-0.5 rounded-full text-xs">{conv.new_messages}</Badge>
-                      )}
+                      {conv.new_messages > 0 && <Badge className="bg-red-500 text-white px-2 py-0.5 rounded-full text-xs">{conv.new_messages}</Badge>}
                     </div>
                   </div>
                 );
@@ -359,24 +401,26 @@ const Messenger = () => {
               onClick={() => setShowSidebar(true)}
               title="العودة لقائمة المحادثات"
             >
-              <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6"><path d="M15 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
+                <path d="M15 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
           )}
           <CardHeader className="flex flex-row items-center gap-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-t-2xl p-4">
-            <Avatar>
-              <AvatarImage src={getOtherParticipant(selectedConv)?.profile_photo_url} alt={getOtherParticipant(selectedConv)?.name} />
-              <AvatarFallback>{(getOtherParticipant(selectedConv)?.name || 'م').slice(0, 1)}</AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar>
+                <AvatarImage src={getOtherParticipant(selectedConv)?.profile_photo_url} alt={getOtherParticipant(selectedConv)?.name} />
+                <AvatarFallback>{(getOtherParticipant(selectedConv)?.name || 'م').slice(0, 1)}</AvatarFallback>
+              </Avatar>
+              {getOtherParticipant(selectedConv)?.isOnline && <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>}
+            </div>
             <div className="flex-1">
               <CardTitle className="font-bold text-gray-800 dark:text-gray-100 text-base">{getOtherParticipant(selectedConv)?.name || 'مستخدم'}</CardTitle>
               <div className="text-xs text-gray-400">{selectedConv.last_message?.created_date || selectedConv.updated_date || ''}</div>
             </div>
           </CardHeader>
-          <div
-            ref={chatContainerRef}
-            className="flex-1 h-0 overflow-y-auto custom-scrollbar"
-          >
-            <CardContent className="px-2 py-4 md:px-6 md:py-6" style={{ background: 'transparent' }}>
+          <div ref={chatContainerRef} className="flex-1 h-0 overflow-y-auto custom-scrollbar bg-gray-200">
+            <CardContent className="px-2 py-4 md:px-6 md:py-6">
               {loadingMsgs ? (
                 <div className="flex justify-center items-center h-full">
                   <Loading />
@@ -384,110 +428,61 @@ const Messenger = () => {
               ) : messages.length === 0 ? (
                 <div className="text-center text-gray-500 dark:text-gray-300 py-12">لا توجد رسائل بعد</div>
               ) : (
-                <>
-                  {[...messages].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()).map((msg: any) => {
+                [...messages]
+                  .filter((msg) => msg.conversation_id === selectedConv?.id)
+                  .map((msg) => {
                     const isAuth = msg.user_id === authUser?.id;
-                    
-                    // تحديد نمط الرسالة بناءً على المرسل
-                    const messageStyle = isAuth 
-                      ? 'bg-blue-500 text-white dark:bg-blue-600 rounded-tr-none shadow-md'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-tl-none shadow-sm';
-                    
-                    // تحديد اتجاه الصورة بناءً على المرسل
-                    const avatarPosition = isAuth 
-                      ? <Avatar className="flex-shrink-0">
-                          <AvatarImage src={msg.user?.profile_photo_url} alt={msg.user?.name} />
-                          <AvatarFallback>{(msg.user?.name || 'م').slice(0, 1)}</AvatarFallback>
-                        </Avatar>
-                      : null;
-                    
-                    const textPosition = !isAuth 
-                      ? <Avatar className="flex-shrink-0">
-                          <AvatarImage src={msg.user?.profile_photo_url} alt={msg.user?.name} />
-                          <AvatarFallback>{(msg.user?.name || 'م').slice(0, 1)}</AvatarFallback>
-                        </Avatar>
-                      : null;
-                    
                     return (
-                        <div key={msg.id} className={`flex ${isAuth ? 'justify-start' : 'justify-end'} mb-4 items-center gap-2 transition-all`}>
-                        {/* صورة المرسل على اليسار */}
+                      <div key={msg.id} className={`flex ${isAuth ? 'justify-start' : 'justify-end'} mb-4 items-center gap-2 transition-all`}>
                         {isAuth && (
                           <Avatar className="flex-shrink-0">
                             <AvatarImage src={msg.user?.profile_photo_url} alt={msg.user?.name} />
                             <AvatarFallback>{(msg.user?.name || 'م').slice(0, 1)}</AvatarFallback>
                           </Avatar>
                         )}
-                        {/* رسالة المستقبل على اليسار */}
                         <div
-                          className={
-                            `max-w-[90vw] md:max-w-[60%] rounded-2xl px-4 py-2 text-sm break-words ` +
-                            (isAuth
-                              ? 'bg-blue-500 text-white dark:bg-blue-600 rounded-tr-none shadow-md'
-                              : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-tl-none shadow-sm'
-                            )
-                          }
+                          className={`max-w-[90vw] md:max-w-[60%] rounded-2xl px-4 py-2 text-sm break-words ${isAuth ? 'bg-blue-500 text-white dark:bg-blue-600 rounded-br-none shadow-md' : 'bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-none shadow-sm'}`}
                           style={{ minHeight: 40 }}
                         >
                           <div>{msg.message || msg.body}</div>
-                          {/* عرض الملف إذا وجد */}
                           {msg.file_url && (
                             <div className="mt-2">
                               <a href={msg.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline flex items-center gap-1">
                                 <FiPaperclip />
-                                {msg.file_name || 'ملف مرفًق'}
+                                {msg.file_name || 'ملف مرفق'}
                               </a>
-                              {/* إذا كاًن صورة */}
-                              {msg.file_url.match(/\.(jpg|jpeg|png|gif)$/i) && (
-                                <img src={msg.file_url} alt={msg.file_name} className="max-w-xs mt-2 rounded" />
-                              )}
+                              {msg.file_url.match(/\.(jpg|jpeg|png|gif)$/i) && <img src={msg.file_url} alt={msg.file_name || ''} className="max-w-xs mt-2 rounded" />}
                             </div>
                           )}
-                          <div className={`text-xs mt-1 ${isAuth
-                            ? 'text-blue-100 dark:text-blue-200 text-left'
-                            : 'text-gray-500 dark:text-gray-300 text-right'
-                            }`}>
+                          <div className={`text-xs mt-1 ${isAuth ? 'text-blue-100 dark:text-blue-200 text-left' : 'text-gray-500 dark:text-gray-300 text-right'}`}>
                             {msg.created_date}
                           </div>
                         </div>
-                        {/* صورة المستقبل على اليمين */}
                         {!isAuth && (
                           <Avatar className="flex-shrink-0">
                             <AvatarImage src={msg.user?.profile_photo_url} alt={msg.user?.name} />
                             <AvatarFallback>{(msg.user?.name || 'م').slice(0, 1)}</AvatarFallback>
                           </Avatar>
                         )}
-
                       </div>
                     );
-                  })}
-                  <div ref={messagesEndRef} />
-                </>
+                  })
               )}
+              <div ref={messagesEndRef} />
             </CardContent>
           </div>
           <form onSubmit={handleSend} className="flex gap-2 items-center p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-2xl sticky bottom-0 z-10 shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.04)]">
-            {/* زر اختيار ملف */}
-            <input
-              type="file"
-              id="chat-file-input"
-              className="hidden"
-              onChange={e => setSelectedFile(e.target.files?.[0] || null)}
-              title="إرفاق ملف"
-              placeholder="اختر ملفًا لإرساله"
-              aria-label="إرفاق ملف"
-            />
+            <input type="file" id="chat-file-input" className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} title="إرفاق ملف" aria-label="إرفاق ملف" />
             <label htmlFor="chat-file-input" className="cursor-pointer flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 mr-2">
               <FiPaperclip className="text-xl text-gray-600 dark:text-gray-300" />
             </label>
-            {selectedFile && (
-              <span className="text-xs text-blue-600 dark:text-blue-300 max-w-[100px] truncate">{selectedFile.name}</span>
-            )}
+            {selectedFile && <span className="text-xs text-blue-600 dark:text-blue-300 max-w-[100px] truncate">{selectedFile.name}</span>}
             <Input
               type="text"
               className="flex-1 border border-blue-200 dark:border-blue-900 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-300 shadow-sm transition-all bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
               placeholder="اكتب رسالتك..."
               value={input}
-              onChange={e => setInput(e.target.value)}
+              onChange={(e) => setInput(e.target.value)}
               disabled={sending}
               dir="rtl"
               style={{ minHeight: 48 }}
@@ -498,11 +493,7 @@ const Messenger = () => {
               className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl w-14 h-14 flex items-center justify-center shadow-lg transition-all disabled:opacity-70 text-2xl"
               style={{ minWidth: 56, minHeight: 56 }}
             >
-              {sending ? (
-                <span className="loader w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-              ) : (
-                <FiSend className="text-2xl" />
-              )}
+              {sending ? <span className="loader w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : <FiSend className="text-2xl" />}
             </button>
           </form>
           {error && <div className="text-center text-red-600 mt-2">{error}</div>}

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ar">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pusher WebSocket Test</title>
+    <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        var pusher = new Pusher('8a691dd97a7cb6368d0b', {
+          cluster: 'ap2',
+          forceTLS: true
+        });
+        pusher.connection.bind('connected', function() {
+          console.log('Connected to Pusher!');
+          document.body.insertAdjacentHTML('beforeend', '<div style="color:green">✅ تم الاتصال بنجاح مع Pusher</div>');
+        });
+        pusher.connection.bind('error', function(err) {
+          console.error('Pusher error:', err);
+          document.body.insertAdjacentHTML('beforeend', '<div style="color:red">❌ حدث خطأ في الاتصال بـ Pusher: ' + (err.error ? err.error.data : err) + '</div>');
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <h1>اختبار اتصال Pusher WebSocket</h1>
+    <p>افتح الـ console لمراقبة النتائج.</p>
+  </body>
+</html> 
