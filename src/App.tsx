@@ -31,6 +31,7 @@ import ChatRoom from "./pages/ChatRoom";
 import ArticleDetails from "./pages/ArticleDetails";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
+import { PusherProvider } from "./context/PusherContext";
 
 const queryClient = new QueryClient();
 
@@ -82,37 +83,39 @@ function App() {
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <ScrollToTop />
-              <ReduxLogger />
-              <Routes>
-                <Route element={<NoHeaderFooterLayout />}>
-                  <Route element={<PublicOnlyRoute />}>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Register />} />
-                    <Route path="/verify" element={<Verify />} />
+              <PusherProvider>
+                <ScrollToTop />
+                <ReduxLogger />
+                <Routes>
+                  <Route element={<NoHeaderFooterLayout />}>
+                    <Route element={<PublicOnlyRoute />}>
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/register" element={<Register />} />
+                      <Route path="/verify" element={<Verify />} />
+                    </Route>
                   </Route>
-                </Route>
-                <Route element={<DefaultLayout />}>
-                  <Route path="/" element={<Index />} />
-                  <Route element={<PrivateRoute />}>
-                    <Route path="/courses" element={<Courses />} />
-                    <Route path="/courses/:id" element={<CourseDetails />} />
-                    <Route path="/courses/:courseId/lecture/:lectureId" element={<LectureDetails />} />
-                    <Route path="/chat" element={<Messenger />} />
-                    <Route path="/chat/:id" element={<ChatRoom />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/notifications" element={<Notifications />} />
+                  <Route element={<DefaultLayout />}>
+                    <Route path="/" element={<Index />} />
+                    <Route element={<PrivateRoute />}>
+                      <Route path="/courses" element={<Courses />} />
+                      <Route path="/courses/:id" element={<CourseDetails />} />
+                      <Route path="/courses/:courseId/lecture/:lectureId" element={<LectureDetails />} />
+                      <Route path="/chat" element={<Messenger />} />
+                      <Route path="/chat/:id" element={<ChatRoom />} />
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/notifications" element={<Notifications />} />
+                    </Route>
+                    <Route path="/articles" element={<Articles />} />
+                    <Route path="/articles/:id" element={<ArticleDetails />} />
+                    <Route path="/services" element={<Services />} />
+                    <Route path="/portfolio" element={<Portfolio />} />
+                    <Route path="/portfolio/:id" element={<PortfolioDetails />} />
+                    <Route path="/order-service" element={<OrderService />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="*" element={<NotFound />} />
                   </Route>
-                  <Route path="/articles" element={<Articles />} />
-                  <Route path="/articles/:id" element={<ArticleDetails />} />
-                  <Route path="/services" element={<Services />} />
-                  <Route path="/portfolio" element={<Portfolio />} />
-                  <Route path="/portfolio/:id" element={<PortfolioDetails />} />
-                  <Route path="/order-service" element={<OrderService />} />
-                  <Route path="/contact" element={<Contact />} />
-                  <Route path="*" element={<NotFound />} />
-                </Route>
-              </Routes>
+                </Routes>
+              </PusherProvider>
             </BrowserRouter>
           </TooltipProvider>
         </QueryClientProvider>

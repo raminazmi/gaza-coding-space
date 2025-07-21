@@ -100,20 +100,25 @@ const Header = () => {
   useEffect(() => {
     if (isAuthenticated) {
       const token = localStorage.getItem('token');
-      // جلب عدد غير المقروءة
-      fetch('https://gazacodingspace.mahmoudalbatran.com/api/notifications/count', {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-        .then(res => res.json())
-        .then(count => setNotifCount(count))
-        .catch(() => setNotifCount(0));
-      // جلب آخر 5 إشعارات
-      fetch('https://gazacodingspace.mahmoudalbatran.com/api/notifications?page=1', {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-        .then(res => res.json())
-        .then(data => setNotifications(data.notifications?.data?.slice(0, 5) || []))
-        .catch(() => setNotifications([]));
+      const fetchNotificationsData = () => {
+        // جلب عدد غير المقروءة
+        fetch('https://gazacodingspace.mahmoudalbatran.com/api/notifications/count', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+          .then(res => res.json())
+          .then(count => setNotifCount(count))
+          .catch(() => setNotifCount(0));
+        // جلب آخر 5 إشعارات
+        fetch('https://gazacodingspace.mahmoudalbatran.com/api/notifications?page=1', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+          .then(res => res.json())
+          .then(data => setNotifications(data.notifications?.data?.slice(0, 5) || []))
+          .catch(() => setNotifications([]));
+      };
+      fetchNotificationsData();
+      const interval = setInterval(fetchNotificationsData, 30000); // كل 30 ثانية
+      return () => clearInterval(interval);
     }
   }, [isAuthenticated]);
 

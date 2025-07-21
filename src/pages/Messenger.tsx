@@ -6,50 +6,11 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import Loading from '@/components/ui/Loading';
 import { Input } from '@/components/ui/input';
-import { FiSend, FiPaperclip } from 'react-icons/fi';
+import { FiSend } from 'react-icons/fi';
+import { FiPaperclip } from 'react-icons/fi';
+import { usePusher } from '@/context/PusherContext';
 
-// Interfaces
-interface User {
-  id: number;
-  name: string;
-  profile_photo_url?: string;
-  isOnline?: boolean;
-}
-
-interface Message {
-  id: string;
-  conversation_id: number;
-  user_id: number;
-  body: string;
-  created_at: string;
-  created_date: string;
-  user: User;
-  file_url?: string;
-  file_name?: string;
-  is_temp?: boolean;
-  message?: string;
-}
-
-interface Conversation {
-  id: number;
-  participants: User[];
-  last_message: {
-    body: string;
-    created_date: string;
-    file_name?: string;
-  };
-  new_messages: number;
-  updated_date: string;
-}
-
-interface Channel {
-  bind: (name: string, callback: (data: any) => void) => Channel;
-  unbind: (name: string, callback?: (data: any) => void) => Channel;
-  name: string;
-}
-
-// Date formatting function
-const formatDate = (dateString: string): string => {
+const formatDate = (dateString) => {
   const date = new Date(dateString);
   return date.toLocaleString('ar-EG', {
     day: '2-digit',
@@ -60,59 +21,148 @@ const formatDate = (dateString: string): string => {
   });
 };
 
+// Type definitions (can be moved to a types file)
+type Participant = {
+  id: number;
+  name: string;
+  profile_photo_url?: string;
+  isOnline?: boolean;
+};
+
+type Message = {
+  id: string | number;
+  conversation_id: number;
+  user_id: number;
+  body?: string;
+  message?: string;
+  created_at: string;
+  created_date?: string;
+  user?: Participant;
+  is_temp?: boolean;
+  file_name?: string;
+  file_url?: string;
+};
+
+type Conversation = {
+  id: number;
+  participants: Participant[];
+  last_message?: Message;
+  updated_date?: string;
+  new_messages?: number;
+};
+
 const Messenger = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loadingConvs, setLoadingConvs] = useState<boolean>(true);
+  const [loadingConvs, setLoadingConvs] = useState(true);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [loadingMsgs, setLoadingMsgs] = useState<boolean>(false);
-  const [input, setInput] = useState<string>('');
-  const [sending, setSending] = useState<boolean>(false);
-  const [error, setError] = useState<string>('');
+  const [loadingMsgs, setLoadingMsgs] = useState(false);
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
   const [alertAudio] = useState<HTMLAudioElement>(new Audio('assets/mixkit-correct-answer-tone-2870.wav'));
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-  const [showSidebar, setShowSidebar] = useState<boolean>(true);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement | null>(null);
+  const [showSidebar, setShowSidebar] = useState(true);
   const isMobile = window.innerWidth < 768;
-  const [authUser, setAuthUser] = useState<User | null>(null);
-  const pusherRef = useRef<Pusher | null>(null);
-  const channelsRef = useRef<Channel[]>([]);
+  const [authUser, setAuthUser] = useState<Participant | null>(null);
+  const pusherRef = useRef<any>(null); // Echo instance
+  const channelsRef = useRef<any[]>([]); // Echo channel instances
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const { echo } = usePusher();
 
   useEffect(() => {
-    pusherRef.current = new Pusher('8a691dd97a7cb6368d0b', {
-      cluster: 'ap2',
-      forceTLS: true,
-    });
-    pusherRef.current.connection.bind('connected', () => {
-      console.log('Connected to Pusher');
-    });
-    pusherRef.current.connection.bind('error', (err) => {
-      console.error('Pusher connection error:', err);
-    });
+    console.log('[Messenger] mount, echo instance:', echo);
+    pusherRef.current = echo;
+    const connection = pusherRef.current?.connection;
+    if (connection && typeof connection.bind === 'function') {
+      connection.bind('connected', () => {
+        console.log('[Pusher] Connected to Pusher');
+      });
+      connection.bind('error', (err) => {
+        console.error('[Pusher] connection error:', err);
+      });
+    }
 
+    // إعداد الصوت
     alertAudio.addEventListener('ended', () => {
       alertAudio.currentTime = 0;
     });
 
     return () => {
+      console.log('[Messenger] unmount, disconnecting echo');
+      if (connection && typeof connection.unbind === 'function') {
+        connection.unbind('connected');
+        connection.unbind('error');
+      }
       pusherRef.current?.disconnect();
       alertAudio.removeEventListener('ended', () => {});
     };
-  }, []);
+  }, [echo]);
+
+  // اشتراك Pusher الصحيح حسب الباك اند: Messenger.{authUser.id}
+  useEffect(() => {
+    if (!pusherRef.current || !authUser) return;
+    console.log('[Pusher] Subscribing to Messenger.' + authUser.id);
+    const channel = pusherRef.current.private(`Messenger.${authUser.id}`);
+    channel.listen('.new-message', (data) => {
+      console.log('[Pusher] .new-message event:', data);
+      const newMessage = {
+        ...data.message,
+        created_date: formatDate(data.message.created_at),
+        user: data.user,
+      };
+      setMessages((prev) => {
+        const filtered = prev.filter((msg) => typeof msg.id === 'string' && msg.id.startsWith('temp-') === false);
+        return [...filtered, newMessage].sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      });
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id === data.message.conversation_id) {
+            return {
+              ...c,
+              last_message: {
+                ...c.last_message,
+                body: data.message.body,
+                created_date: formatDate(data.message.created_at),
+                id: c.last_message?.id ?? '',
+              },
+              new_messages: c.id === selectedConv?.id ? 0 : (c.new_messages || 0) + 1,
+            };
+          }
+          return c;
+        }) as Conversation[]
+      );
+      if (selectedConv && selectedConv.id === data.message.conversation_id) {
+        markAsRead(selectedConv.id);
+      }
+      alertAudio.play();
+    });
+    return () => {
+      console.log('[Pusher] Unsubscribing from Messenger.' + authUser.id);
+      pusherRef.current.leave(`private-Messenger.${authUser.id}`);
+    };
+  }, [pusherRef.current, authUser, selectedConv]);
+
+  // أزل الاشتراك في قنوات conversation القديمة
+  // ... احذف useEffect الخاص بالاشتراك في قنوات conversation ...
 
   const fetchConversations = async () => {
     setLoadingConvs(true);
     const token = localStorage.getItem('token');
+    console.log('[fetchConversations] start, token:', token);
     try {
       const res = await fetch(`${apiBaseUrl}/api/conversations`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      const data: Conversation[] = await res.json();
+      const data = await res.json();
+      console.log('[fetchConversations] response:', data);
       if (Array.isArray(data)) {
         data.forEach((conv) => {
           if (conv.participants && conv.participants[0]) {
-            conv.participants[0].isOnline = false;
+            conv.participants[0].isOnline = false; // حالة افتراضية
           }
         });
       }
@@ -123,14 +173,16 @@ const Messenger = () => {
         fetchMessages(data[0].id);
       }
     } catch (e) {
+      console.error('[fetchConversations] error:', e);
       setLoadingConvs(false);
     }
   };
 
-  const fetchMessages = async (convId: number) => {
+  const fetchMessages = async (convId) => {
     setLoadingMsgs(true);
     setError('');
     const token = localStorage.getItem('token');
+    console.log('[fetchMessages] for convId:', convId);
     try {
       const res = await fetch(`${apiBaseUrl}/api/conversations/${convId}/messages`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -139,22 +191,23 @@ const Messenger = () => {
         setError('تعذر تحميل الرسائل.');
         setMessages([]);
         setLoadingMsgs(false);
+        console.error('[fetchMessages] response not ok:', res.status);
         return;
       }
       const text = await res.text();
       const data = JSON.parse(text);
-      if (data?.messages?.data && Array.isArray(data.messages.data)) {
-        const formattedMessages: Message[] = data.messages.data
-          .map((msg: any) => ({
-            ...msg,
-            created_date: formatDate(msg.created_at),
-          }))
-          .reverse();
+      console.log('[fetchMessages] response:', data);
+      if (data && data.messages && Array.isArray(data.messages.data)) {
+        const formattedMessages = data.messages.data.map((msg) => ({
+          ...msg,
+          created_date: formatDate(msg.created_at),
+        })).reverse(); // عكس الترتيب كما في المثال
         setMessages(formattedMessages);
       } else {
         setMessages([]);
       }
     } catch (e) {
+      console.error('[fetchMessages] error:', e);
       setError('حدث خطأ أثناء تحميل الرسائل.');
       setMessages([]);
     } finally {
@@ -162,9 +215,10 @@ const Messenger = () => {
     }
   };
 
-  const markAsRead = async (convId: number) => {
+  const markAsRead = async (convId) => {
     try {
       const token = localStorage.getItem('token');
+      console.log('[markAsRead] convId:', convId);
       await fetch(`${apiBaseUrl}/api/conversations/${convId}/read`, {
         method: 'PUT',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -172,45 +226,70 @@ const Messenger = () => {
       setConversations((prev) =>
         prev.map((conv) => (conv.id === convId ? { ...conv, new_messages: 0 } : conv))
       );
-    } catch (err) {}
+    } catch (err) {
+      console.error('[markAsRead] error:', err);
+    }
   };
 
   useEffect(() => {
+    console.log('[useEffect] conversations or selectedConv changed', { conversations, selectedConv });
     if (!pusherRef.current) return;
 
+    // تنظيف الاشتراكات السابقة
     channelsRef.current.forEach((channel) => {
-      channel.unbind('new-message');
-      channel.unbind('pusher:member_added');
-      channel.unbind('pusher:member_removed');
-      pusherRef.current?.unsubscribe(channel.name);
+      if (channel.stopListening) {
+        channel.stopListening('new-message');
+        channel.stopListening('pusher:member_added');
+        channel.stopListening('pusher:member_removed');
+      }
     });
     channelsRef.current = [];
 
+    // الاشتراك في قنوات Echo
     conversations.forEach((conv) => {
-      const channel = pusherRef.current!.subscribe(`conversation.${conv.id}`);
-      channel.bind('new-message', (data: { message: Message; user: User }) => {
-        console.log('Received event on channel:', `conversation.${conv.id}`, data);
-        // تحديث الرسائل فقط إذا كانت تخص المحادثة الحالية
-        if (selectedConv?.id == data.message.conversation_id) {
-          const newMessage: Message = {
-            ...data.message,
-            created_date: formatDate(data.message.created_at),
-            user: data.user,
-          };
-          setMessages((prev) => {
-            const filtered = prev.filter((msg) => !msg.id.startsWith('temp-'));
-            const result = [...filtered, newMessage].sort(
-              (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-            );
-            console.log('Updated messages:', result);
-            return result;
-          });
+      if (!pusherRef.current) return;
+      const channel = pusherRef.current.channel(`conversation.${conv.id}`);
+      console.log('[Echo] subscribing to conversation channel:', `conversation.${conv.id}`);
+      channel.listen('new-message', (data) => {
+        console.log('[Echo] new-message event:', data);
+        const newMessage = {
+          ...data.message,
+          created_date: formatDate(data.message.created_at),
+          user: data.user,
+        };
+        setMessages((prev) => {
+          const filtered = prev.filter((msg) => typeof msg.id === 'string' && msg.id.startsWith('temp-') === false);
+          return [...filtered, newMessage].sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+        });
+        setConversations((prev) =>
+          prev.map((c) => {
+            if (c.id === data.message.conversation_id) {
+              return {
+                ...c,
+                last_message: {
+                  ...c.last_message,
+                  body: data.message.body,
+                  created_date: formatDate(data.message.created_at),
+                  id: c.last_message?.id ?? '', // Ensure id is always present
+                },
+                new_messages: c.id === selectedConv?.id ? 0 : (c.new_messages || 0) + 1,
+              };
+            }
+            return c;
+          }) as Conversation[]
+        );
+        if (selectedConv && selectedConv.id === data.message.conversation_id) {
           markAsRead(selectedConv.id);
-          alertAudio.play();
         }
+        alertAudio.play(); // تشغيل الصوت عند وصول رسالة
       });
 
-      pusherRef.current!.subscribe('Chat').bind('pusher:member_added', (member: { id: number }) => {
+      // تحديث حالة الاتصال عبر قناة Chat
+      const chatChannel = pusherRef.current.channel('Chat');
+      chatChannel.listen('pusher:member_added', (member) => {
+        console.log('[Echo] pusher:member_added', member);
         setConversations((prev) =>
           prev.map((c) => {
             if (c.participants && c.participants[0]?.id === member.id) {
@@ -220,7 +299,8 @@ const Messenger = () => {
           })
         );
       });
-      pusherRef.current!.subscribe('Chat').bind('pusher:member_removed', (member: { id: number }) => {
+      chatChannel.listen('pusher:member_removed', (member) => {
+        console.log('[Echo] pusher:member_removed', member);
         setConversations((prev) =>
           prev.map((c) => {
             if (c.participants && c.participants[0]?.id === member.id) {
@@ -235,11 +315,13 @@ const Messenger = () => {
     });
 
     return () => {
+      console.log('[useEffect cleanup] unsubscribing all channels');
       channelsRef.current.forEach((channel) => {
-        channel.unbind('new-message');
-        channel.unbind('pusher:member_added');
-        channel.unbind('pusher:member_removed');
-        pusherRef.current?.unsubscribe(channel.name);
+        if (channel.stopListening) {
+          channel.stopListening('new-message');
+          channel.stopListening('pusher:member_added');
+          channel.stopListening('pusher:member_removed');
+        }
       });
     };
   }, [conversations, selectedConv]);
@@ -252,20 +334,26 @@ const Messenger = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return;
-      const data: User = await res.json();
+      const data = await res.json();
+      console.log('[fetchAuthUser] user:', data);
       setAuthUser(data);
-    } catch (e) {}
+    } catch (e) {
+      console.error('[fetchAuthUser] error:', e);
+    }
   };
 
   useEffect(() => {
+    console.log('[useEffect] mount fetchAuthUser');
     fetchAuthUser();
   }, []);
 
   useEffect(() => {
+    console.log('[useEffect] authUser changed:', authUser);
     if (authUser) fetchConversations();
   }, [authUser]);
 
   useEffect(() => {
+    console.log('[useEffect] selectedConv changed:', selectedConv);
     if (selectedConv?.id) {
       fetchMessages(selectedConv.id);
       markAsRead(selectedConv.id);
@@ -273,14 +361,17 @@ const Messenger = () => {
   }, [selectedConv]);
 
   useEffect(() => {
+    console.log('[useEffect] messages changed:', messages);
     if (messages.length > 0) {
-      try {
-        const endRef = messagesEndRef.current;
-        const container = chatContainerRef.current;
-        if (endRef && container) {
-          container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        try {
+          const endRef = messagesEndRef.current;
+          const container = chatContainerRef.current;
+          if (endRef && container) {
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+          }
+        } catch (e) {
+          console.error('[useEffect] scroll error:', e);
         }
-      } catch (e) {}
     }
   }, [messages]);
 
@@ -288,10 +379,10 @@ const Messenger = () => {
     setShowSidebar(!isMobile);
   }, [isMobile]);
 
-  const handleSend = async (e: React.FormEvent) => {
+  const handleSend = async (e) => {
     e.preventDefault();
     if ((!input.trim() && !selectedFile) || !selectedConv || !authUser) return;
-    const tempMessage: Message = {
+    const tempMessage = {
       id: `temp-${Date.now()}`,
       conversation_id: selectedConv.id,
       user_id: authUser.id,
@@ -300,7 +391,7 @@ const Messenger = () => {
       created_date: formatDate(new Date().toISOString()),
       user: authUser,
       is_temp: true,
-      file_name: selectedFile?.name,
+      file_name: selectedFile?.name || undefined,
     };
     setMessages((prev) => [...prev, tempMessage]);
     setInput('');
@@ -312,6 +403,7 @@ const Messenger = () => {
     formData.append('message', input);
     if (selectedFile) formData.append('file', selectedFile);
     try {
+      console.log('[handleSend] sending message:', { input, selectedFile });
       const res = await fetch(`${apiBaseUrl}/api/messages`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -320,28 +412,37 @@ const Messenger = () => {
       if (!res.ok) {
         setError('حدث خطأ أثناء إرسال الرسالة');
         setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
+        console.error('[handleSend] response not ok:', res.status);
       }
     } catch (e) {
       setError('حدث خطأ أثناء إرسال الرسالة');
       setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
+      console.error('[handleSend] error:', e);
     } finally {
       setSending(false);
       setSelectedFile(null);
     }
   };
 
-  const handleSelectConv = (conv: Conversation) => {
+  const handleSelectConv = (conv) => {
+    console.log('[handleSelectConv] selected:', conv);
     setSelectedConv(conv);
     if (isMobile) setShowSidebar(false);
   };
 
-  const getOtherParticipant = (conv: Conversation): User | undefined =>
-    (conv.participants || []).find((p) => p.id !== authUser?.id) || conv.participants?.[0];
+  const getOtherParticipant = (conv) => {
+    const other = (conv.participants || []).find((p) => p.id !== authUser?.id) || conv.participants?.[0];
+    console.log('[getOtherParticipant] for conv:', conv, '=>', other);
+    return other;
+  };
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row items-center justify-center py-4 md:py-8 px-2 md:px-12" dir="rtl">
       {(!selectedConv || showSidebar) && (
-        <Card className="w-full md:w-1/4 max-w-full md:max-w-1/4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 flex-shrink-0 flex flex-col h-[90vh] mb-4 md:mb-0" style={{ zIndex: 20 }}>
+        <Card
+          className="w-full md:w-1/4 max-w-full md:max-w-1/4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 flex-shrink-0 flex flex-col h-[90vh] mb-4 md:mb-0"
+          style={{ zIndex: 20 }}
+        >
           <CardHeader className="flex flex-row items-center gap-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-t-2xl p-4">
             <CardTitle className="text-lg font-bold text-gray-800 dark:text-gray-100">الدردشة والاستفسارات</CardTitle>
             <span className="ml-auto w-3 h-3 rounded-full bg-green-400 inline-block"></span>
@@ -359,7 +460,9 @@ const Messenger = () => {
                 return (
                   <div
                     key={conv.id}
-                    className={`flex items-center gap-3 px-4 py-4 cursor-pointer border-b border-gray-100 dark:border-gray-700 hover:bg-primary/10 transition-all rounded-xl mx-2 my-1 ${selectedConv?.id === conv.id ? 'bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-400' : ''}`}
+                    className={`flex items-center gap-3 px-4 py-4 cursor-pointer border-b border-gray-100 dark:border-gray-700 hover:bg-primary/10 transition-all rounded-xl mx-2 my-1 ${
+                      selectedConv?.id === conv.id ? 'bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-400' : ''
+                    }`}
                     style={{ minHeight: 64 }}
                     onClick={() => handleSelectConv(conv)}
                   >
@@ -377,14 +480,14 @@ const Messenger = () => {
                           <span className="flex items-center gap-1">
                             <FiPaperclip /> {conv.last_message.file_name}
                           </span>
-                        ) : (
-                          conv.last_message?.body || 'لا توجد رسائل بعد'
-                        )}
+                        ) : conv.last_message?.body || 'لا توجد رسائل بعد'}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1 min-w-[70px]">
                       <span className="text-xs text-gray-400">{conv.last_message?.created_date || conv.updated_date || ''}</span>
-                      {conv.new_messages > 0 && <Badge className="bg-red-500 text-white px-2 py-0.5 rounded-full text-xs">{conv.new_messages}</Badge>}
+                      { (conv.new_messages ?? 0) > 0 && (
+                        <Badge className="bg-red-500 text-white px-2 py-0.5 rounded-full text-xs">{conv.new_messages}</Badge>
+                      )}
                     </div>
                   </div>
                 );
@@ -441,7 +544,9 @@ const Messenger = () => {
                           </Avatar>
                         )}
                         <div
-                          className={`max-w-[90vw] md:max-w-[60%] rounded-2xl px-4 py-2 text-sm break-words ${isAuth ? 'bg-blue-500 text-white dark:bg-blue-600 rounded-br-none shadow-md' : 'bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-none shadow-sm'}`}
+                          className={`max-w-[90vw] md:max-w-[60%] rounded-2xl px-4 py-2 text-sm break-words ${
+                            isAuth ? 'bg-blue-500 text-white dark:bg-blue-600 rounded-br-none shadow-md' : 'bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-none shadow-sm'
+                          }`}
                           style={{ minHeight: 40 }}
                         >
                           <div>{msg.message || msg.body}</div>
@@ -451,7 +556,7 @@ const Messenger = () => {
                                 <FiPaperclip />
                                 {msg.file_name || 'ملف مرفق'}
                               </a>
-                              {msg.file_url.match(/\.(jpg|jpeg|png|gif)$/i) && <img src={msg.file_url} alt={msg.file_name || ''} className="max-w-xs mt-2 rounded" />}
+                              {msg.file_url.match(/\.(jpg|jpeg|png|gif)$/i) && <img src={msg.file_url} alt={msg.file_name} className="max-w-xs mt-2 rounded" />}
                             </div>
                           )}
                           <div className={`text-xs mt-1 ${isAuth ? 'text-blue-100 dark:text-blue-200 text-left' : 'text-gray-500 dark:text-gray-300 text-right'}`}>

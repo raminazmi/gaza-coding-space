@@ -4,15 +4,6 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 export default defineConfig(({ mode }) => ({
-  server: {
-    proxy: {
-      '/broadcasting': {
-        target: 'https://gazacodingspace.mahmoudalbatran.com',
-        changeOrigin: true,
-        secure: false,
-      }
-    }
-  },
   plugins: [react({
     babel: {
       plugins: ['@babel/plugin-transform-runtime']
