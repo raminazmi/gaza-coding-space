@@ -8,6 +8,19 @@ import { Badge } from '@/components/ui/badge';
 import Loading from '@/components/ui/Loading';
 import { Input } from '@/components/ui/input';
 import { FiSend } from 'react-icons/fi';
+import { FiPaperclip } from 'react-icons/fi';
+
+// نقل دالة formatDate إلى هنا (أعلى الملف)
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleString('ar-EG', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
 
 const Messenger = () => {
   const [conversations, setConversations] = useState<any[]>([]);
@@ -25,7 +38,20 @@ const Messenger = () => {
   const [authUser, setAuthUser] = useState<any>(null);
   const pusherRef = useRef<any>(null);
   const channelsRef = useRef<any[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
+  console.log('messages:', messages);
+  // تهيئة Pusher
+  useEffect(() => {
+    pusherRef.current = new Pusher('8a691dd97a7cb6368d0b', {
+      cluster: 'ap2',
+      forceTLS: true
+    });
+    return () => {
+      pusherRef.current?.disconnect();
+    };
+  }, []);
+  
   // جلب المحادثات
   const fetchConversations = async () => {
     setLoadingConvs(true);
@@ -94,39 +120,40 @@ const Messenger = () => {
     } catch (err) { }
   };
 
-  // تهيئة Pusher
-  useEffect(() => {
-    pusherRef.current = new Pusher('8a691dd97a7cb6368d0b', {
-      cluster: 'ap2',
-      forceTLS: true
-    });
-    return () => {
-      pusherRef.current?.disconnect();
-    };
-  }, []);
 
-  // الاشتراك في قنوات المحادثات
+  // الاشتراك في قنوات المحادثات - تم التعديل
   useEffect(() => {
     if (!pusherRef.current) return;
-    channelsRef.current.forEach(channel => channel.unbind_all());
+    
+    // فصل القنوات القديمة
+    channelsRef.current.forEach(channel => {
+      channel.unbind('new-message');
+      pusherRef.current.unsubscribe(channel.name);
+    });
+    
     channelsRef.current = [];
+    
     conversations.forEach(conv => {
       const channel = pusherRef.current.subscribe(`conversation.${conv.id}`);
+      
       channel.bind('new-message', (data: any) => {
-        console.log('new message from pusher', data); // تم إضافة هذا السطر
+        console.log('new message from pusher', data);
         const newMessage = {
           ...data.message,
           created_date: formatDate(data.message.created_at),
           user: data.user
         };
-        // أضف الرسالة فقط إذا لم تكن موجودة بالفعل
+        
         setMessages(prev => {
-          if (prev.some(msg => msg.id === newMessage.id)) return prev;
-          return [...prev, newMessage];
+          // إزالة الرسالة المؤقتة إن وجدت
+          const filtered = prev.filter(msg => !msg.id.startsWith('temp-'));
+          return [...filtered, newMessage];
         });
+        
         if (selectedConv?.id === data.message.conversation_id) {
           markAsRead(selectedConv.id);
         }
+        
         setConversations(prev => prev.map(c => {
           if (c.id === data.message.conversation_id) {
             return {
@@ -142,23 +169,17 @@ const Messenger = () => {
           return c;
         }));
       });
+      
       channelsRef.current.push(channel);
     });
+    
     return () => {
-      channelsRef.current.forEach(channel => channel.unbind_all());
+      channelsRef.current.forEach(channel => {
+        channel.unbind('new-message');
+        pusherRef.current.unsubscribe(channel.name);
+      });
     };
-  }, [conversations, selectedConv]);
-
-  // إزالة المتغيرات القديمة:
-  // const [authId] = useState(() => Number(localStorage.getItem('user_id')));
-  // const [authName] = useState(() => localStorage.getItem('user_name') || '');
-  // const [authPhoto] = useState(() => localStorage.getItem('user_photo_url') || '');
-  // const [authId] = useState(() => Number(localStorage.getItem('user_id')));
-  // const [authName] = useState(() => localStorage.getItem('user_name') || '');
-  // const [authPhoto] = useState(() => localStorage.getItem('user_photo_url') || '');
-  const [authId] = useState(() => authUser?.id || null);
-  const [authName] = useState(() => authUser?.name || '');
-  const [authPhoto] = useState(() => authUser?.profile_photo_url || '');
+  }, [conversations, selectedConv]); // إضافة selectedConv كاعتمادية
 
   // دالة لجلب بيانات المستخدم
   const fetchAuthUser = async () => {
@@ -198,13 +219,22 @@ const Messenger = () => {
 
   // التمرير إلى أحدث رسالة
   useEffect(() => {
-    if (messages.length > 0 && messagesEndRef.current && chatContainerRef.current) {
-      const container = chatContainerRef.current;
-      const scrollPosition = messagesEndRef.current.offsetTop - container.offsetTop;
-      container.scrollTo({
-        top: scrollPosition,
-        behavior: 'smooth'
-      });
+    if (messages.length > 0) {
+      setTimeout(() => {
+        try {
+          const endRef = messagesEndRef.current;
+          const container = chatContainerRef.current;
+          if (endRef && container) {
+            const scrollPosition = endRef.offsetTop - container.offsetTop;
+            container.scrollTo({
+              top: scrollPosition,
+              behavior: 'smooth'
+            });
+          }
+        } catch (e) {
+          // تجاهل الخطأ أو أضف log إذا أردت
+        }
+      }, 50);
     }
   }, [messages]);
 
@@ -212,27 +242,33 @@ const Messenger = () => {
     setShowSidebar(!isMobile);
   }, [isMobile]);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('ar-EG', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  // عند إرسال رسالة، لا تضف الرسالة محليًا بل انتظر وصولها من Pusher
+  // عند إرسال رسالة - تم التعديل
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !selectedConv || !authUser) return;
+    if ((!input.trim() && !selectedFile) || !selectedConv || !authUser) return;
+    // إضافة رسالة مؤقتة (مع اسم الملف إن وجد)
+    const tempMessage = {
+      id: `temp-${Date.now()}`,
+      conversation_id: selectedConv.id,
+      user_id: authUser.id,
+      body: input,
+      created_at: new Date().toISOString(),
+      created_date: formatDate(new Date().toISOString()),
+      user: authUser,
+      is_temp: true,
+      file_name: selectedFile?.name || undefined
+    };
+    setMessages(prev => [...prev, tempMessage]);
+    setInput('');
     setSending(true);
     setError('');
     const token = localStorage.getItem('token');
     const formData = new FormData();
-    formData.append('conversation_id', selectedConv.id);
+    formData.append('conversation_id', selectedConv.id.toString());
     formData.append('message', input);
+    if (selectedFile) {
+      formData.append('file', selectedFile);
+    }
     try {
       const res = await fetch(`${apiBaseUrl}/api/messages`, {
         method: 'POST',
@@ -241,14 +277,14 @@ const Messenger = () => {
       });
       if (!res.ok) {
         setError('حدث خطأ أثناء إرسال الرسالة');
-      } else {
-        setInput('');
-        // لا داعي لاستدعاء fetchMessages أو setMessages هنا
+        setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
       }
     } catch (e) {
       setError('حدث خطأ أثناء إرسال الرسالة');
+      setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
     } finally {
       setSending(false);
+      setSelectedFile(null);
     }
   };
 
@@ -257,7 +293,7 @@ const Messenger = () => {
     if (isMobile) setShowSidebar(false);
   };
 
-  // تحديث getOtherParticipant ليستخدم authUser?.id بدلاً من authId
+  // تحديث getOtherParticipant ليستخدم authUser?.id
   const getOtherParticipant = (conv: any) => {
     return (conv.participants || []).find((p: any) => p.id !== authUser?.id) || conv.participants?.[0];
   };
@@ -297,7 +333,9 @@ const Messenger = () => {
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-gray-800 dark:text-gray-100 text-base truncate">{other?.name || 'مستخدم'}</div>
                       <div className="text-sm text-gray-500 dark:text-gray-300 truncate">
-                        {conv.last_message?.body ? conv.last_message.body : 'لا توجد رسائل بعد'}
+                        {conv.last_message?.file_name
+                          ? <span className="flex items-center gap-1"><FiPaperclip />{conv.last_message.file_name}</span>
+                          : conv.last_message?.body || 'لا توجد رسائل بعد'}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1 min-w-[70px]">
@@ -336,8 +374,7 @@ const Messenger = () => {
           </CardHeader>
           <div
             ref={chatContainerRef}
-            className="flex-1 overflow-y-auto custom-scrollbar"
-            style={{ minHeight: 400 }}
+            className="flex-1 h-0 overflow-y-auto custom-scrollbar"
           >
             <CardContent className="px-2 py-4 md:px-6 md:py-6" style={{ background: 'transparent' }}>
               {loadingMsgs ? (
@@ -350,8 +387,29 @@ const Messenger = () => {
                 <>
                   {[...messages].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()).map((msg: any) => {
                     const isAuth = msg.user_id === authUser?.id;
+                    
+                    // تحديد نمط الرسالة بناءً على المرسل
+                    const messageStyle = isAuth 
+                      ? 'bg-blue-500 text-white dark:bg-blue-600 rounded-tr-none shadow-md'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-tl-none shadow-sm';
+                    
+                    // تحديد اتجاه الصورة بناءً على المرسل
+                    const avatarPosition = isAuth 
+                      ? <Avatar className="flex-shrink-0">
+                          <AvatarImage src={msg.user?.profile_photo_url} alt={msg.user?.name} />
+                          <AvatarFallback>{(msg.user?.name || 'م').slice(0, 1)}</AvatarFallback>
+                        </Avatar>
+                      : null;
+                    
+                    const textPosition = !isAuth 
+                      ? <Avatar className="flex-shrink-0">
+                          <AvatarImage src={msg.user?.profile_photo_url} alt={msg.user?.name} />
+                          <AvatarFallback>{(msg.user?.name || 'م').slice(0, 1)}</AvatarFallback>
+                        </Avatar>
+                      : null;
+                    
                     return (
-                      <div key={msg.id} className={`flex ${isAuth ? 'justify-start' : 'justify-end'} mb-4 items-center gap-2 transition-all`}>
+                        <div key={msg.id} className={`flex ${isAuth ? 'justify-start' : 'justify-end'} mb-4 items-center gap-2 transition-all`}>
                         {/* صورة المرسل على اليسار */}
                         {isAuth && (
                           <Avatar className="flex-shrink-0">
@@ -371,6 +429,19 @@ const Messenger = () => {
                           style={{ minHeight: 40 }}
                         >
                           <div>{msg.message || msg.body}</div>
+                          {/* عرض الملف إذا وجد */}
+                          {msg.file_url && (
+                            <div className="mt-2">
+                              <a href={msg.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline flex items-center gap-1">
+                                <FiPaperclip />
+                                {msg.file_name || 'ملف مرفًق'}
+                              </a>
+                              {/* إذا كاًن صورة */}
+                              {msg.file_url.match(/\.(jpg|jpeg|png|gif)$/i) && (
+                                <img src={msg.file_url} alt={msg.file_name} className="max-w-xs mt-2 rounded" />
+                              )}
+                            </div>
+                          )}
                           <div className={`text-xs mt-1 ${isAuth
                             ? 'text-blue-100 dark:text-blue-200 text-left'
                             : 'text-gray-500 dark:text-gray-300 text-right'
@@ -395,6 +466,22 @@ const Messenger = () => {
             </CardContent>
           </div>
           <form onSubmit={handleSend} className="flex gap-2 items-center p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-2xl sticky bottom-0 z-10 shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.04)]">
+            {/* زر اختيار ملف */}
+            <input
+              type="file"
+              id="chat-file-input"
+              className="hidden"
+              onChange={e => setSelectedFile(e.target.files?.[0] || null)}
+              title="إرفاق ملف"
+              placeholder="اختر ملفًا لإرساله"
+              aria-label="إرفاق ملف"
+            />
+            <label htmlFor="chat-file-input" className="cursor-pointer flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 mr-2">
+              <FiPaperclip className="text-xl text-gray-600 dark:text-gray-300" />
+            </label>
+            {selectedFile && (
+              <span className="text-xs text-blue-600 dark:text-blue-300 max-w-[100px] truncate">{selectedFile.name}</span>
+            )}
             <Input
               type="text"
               className="flex-1 border border-blue-200 dark:border-blue-900 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-300 shadow-sm transition-all bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
