@@ -19,17 +19,9 @@ export const PusherProvider = ({ children }: { children: React.ReactNode }) => {
     if (isAuthenticated && token) {
       const echoInstance = getEchoInstance(token);
       setEcho(echoInstance);
-    } else if (echo) {
-      echo.disconnect();
+    } else {
       setEcho(null);
     }
-    return () => {
-      if (echo) {
-        echo.disconnect();
-        setEcho(null);
-      }
-    };
-    // eslint-disable-next-line
   }, [isAuthenticated]);
 
   return (

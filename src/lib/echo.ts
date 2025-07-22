@@ -9,10 +9,12 @@ if (typeof window !== 'undefined') {
 }
 
 let echo: Echo<any> | null = null;
+let currentToken: string | null = null;
 
 export function getEchoInstance(token: string) {
+  // إذا كان هناك اتصال موجود، أرجعه مباشرة (لا نقطع الاتصال أبداً)
   if (echo) {
-    echo.disconnect();
+    return echo;
   }
   echo = new Echo<any>({
     broadcaster: 'pusher',
@@ -21,13 +23,31 @@ export function getEchoInstance(token: string) {
     forceTLS: true,
     authEndpoint: `${apiBaseUrl}/broadcasting/auth`,
     auth: {
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
     },
-  },
-});
-return echo;
+  });
+
+  // احفظ التوكن الحالي
+  currentToken = token;
+
+  return echo;
+}
+
+// دالة لقطع الاتصال عند تسجيل الخروج
+export function disconnectEcho() {
+  if (echo) {
+    echo.disconnect();
+    echo = null;
+    currentToken = null;
+  }
+}
+
+// دالة للتحقق من حالة الاتصال
+export function isEchoConnected(): boolean {
+  return echo !== null;
 }
 
 
