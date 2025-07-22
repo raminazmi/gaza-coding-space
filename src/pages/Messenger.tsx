@@ -1,13 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import Pusher from 'pusher-js';
 import { apiBaseUrl } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import Loading from '@/components/ui/Loading';
 import { Input } from '@/components/ui/input';
-import { FiSend } from 'react-icons/fi';
-import { FiPaperclip } from 'react-icons/fi';
+import { FiSend, FiPaperclip } from 'react-icons/fi';
 import { usePusher } from '@/context/PusherContext';
 
 const formatDate = (dateString) => {
@@ -21,7 +19,33 @@ const formatDate = (dateString) => {
   });
 };
 
-// Type definitions (can be moved to a types file)
+// دالة لعرض الوقت بشكل نسبي أو التاريخ والوقت إذا مر أكثر من أسبوع
+function formatRelativeTime(dateString) {
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffMs = now.getTime() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffSec < 60) return 'الآن';
+  if (diffMin < 60) return `منذ ${diffMin} دقيقة${diffMin === 1 ? '' : ''}`;
+  if (diffHour < 24) return `منذ ${diffHour} ساعة${diffHour === 1 ? '' : ''}`;
+  if (diffDay < 7) return `منذ ${diffDay} يوم${diffDay === 1 ? '' : ''}`;
+
+  // إذا مر أكثر من أسبوع، اعرض التاريخ والوقت بشكل مختصر
+  return date.toLocaleString('ar-EG', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+// Type definitions
 type Participant = {
   id: number;
   name: string;
@@ -54,6 +78,9 @@ type Conversation = {
 const Messenger = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loadingConvs, setLoadingConvs] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
@@ -66,265 +93,26 @@ const Messenger = () => {
   const [showSidebar, setShowSidebar] = useState(true);
   const isMobile = window.innerWidth < 768;
   const [authUser, setAuthUser] = useState<Participant | null>(null);
-  const pusherRef = useRef<any>(null); // Echo instance
-  const channelsRef = useRef<any[]>([]); // Echo channel instances
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { echo } = usePusher();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [visibleConvs, setVisibleConvs] = useState(10); // عدد المحادثات المعروضة مبدئياً
+  const [currentMsgPage, setCurrentMsgPage] = useState(1);
+  const [hasMoreMsgs, setHasMoreMsgs] = useState(true);
+  const [loadingMoreMsgs, setLoadingMoreMsgs] = useState(false);
 
   useEffect(() => {
     console.log('[Messenger] mount, echo instance:', echo);
-    pusherRef.current = echo;
-    const connection = pusherRef.current?.connection;
-    if (connection && typeof connection.bind === 'function') {
-      connection.bind('connected', () => {
-        console.log('[Pusher] Connected to Pusher');
-      });
-      connection.bind('error', (err) => {
-        console.error('[Pusher] connection error:', err);
-      });
-    }
-
-    // إعداد الصوت
-    alertAudio.addEventListener('ended', () => {
+    const alertAudio = new Audio('/assets/mixkit-correct-answer-tone-2870.wav');
+    
+    const onAudioEnded = () => {
       alertAudio.currentTime = 0;
-    });
+    };
+    alertAudio.addEventListener('ended', onAudioEnded);
 
     return () => {
-      console.log('[Messenger] unmount, disconnecting echo');
-      if (connection && typeof connection.unbind === 'function') {
-        connection.unbind('connected');
-        connection.unbind('error');
-      }
-      pusherRef.current?.disconnect();
-      alertAudio.removeEventListener('ended', () => {});
+      alertAudio.removeEventListener('ended', onAudioEnded);
     };
-  }, [echo]);
-
-  // اشتراك Pusher الصحيح حسب الباك اند: Messenger.{authUser.id}
-  useEffect(() => {
-    if (!pusherRef.current || !authUser) return;
-    console.log('[Pusher] Subscribing to Messenger.' + authUser.id);
-    const channel = pusherRef.current.private(`Messenger.${authUser.id}`);
-    channel.listen('.new-message', (data) => {
-      console.log('[Pusher] .new-message event:', data);
-      const newMessage = {
-        ...data.message,
-        created_date: formatDate(data.message.created_at),
-        user: data.user,
-      };
-      setMessages((prev) => {
-        const filtered = prev.filter((msg) => typeof msg.id === 'string' && msg.id.startsWith('temp-') === false);
-        return [...filtered, newMessage].sort(
-          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-      });
-      setConversations((prev) =>
-        prev.map((c) => {
-          if (c.id === data.message.conversation_id) {
-            return {
-              ...c,
-              last_message: {
-                ...c.last_message,
-                body: data.message.body,
-                created_date: formatDate(data.message.created_at),
-                id: c.last_message?.id ?? '',
-              },
-              new_messages: c.id === selectedConv?.id ? 0 : (c.new_messages || 0) + 1,
-            };
-          }
-          return c;
-        }) as Conversation[]
-      );
-      if (selectedConv && selectedConv.id === data.message.conversation_id) {
-        markAsRead(selectedConv.id);
-      }
-      alertAudio.play();
-    });
-    return () => {
-      console.log('[Pusher] Unsubscribing from Messenger.' + authUser.id);
-      pusherRef.current.leave(`private-Messenger.${authUser.id}`);
-    };
-  }, [pusherRef.current, authUser, selectedConv]);
-
-  // أزل الاشتراك في قنوات conversation القديمة
-  // ... احذف useEffect الخاص بالاشتراك في قنوات conversation ...
-
-  const fetchConversations = async () => {
-    setLoadingConvs(true);
-    const token = localStorage.getItem('token');
-    console.log('[fetchConversations] start, token:', token);
-    try {
-      const res = await fetch(`${apiBaseUrl}/api/conversations`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const data = await res.json();
-      console.log('[fetchConversations] response:', data);
-      if (Array.isArray(data)) {
-        data.forEach((conv) => {
-          if (conv.participants && conv.participants[0]) {
-            conv.participants[0].isOnline = false; // حالة افتراضية
-          }
-        });
-      }
-      setConversations(data);
-      setLoadingConvs(false);
-      if ((!selectedConv || !selectedConv.id) && data.length > 0) {
-        setSelectedConv(data[0]);
-        fetchMessages(data[0].id);
-      }
-    } catch (e) {
-      console.error('[fetchConversations] error:', e);
-      setLoadingConvs(false);
-    }
-  };
-
-  const fetchMessages = async (convId) => {
-    setLoadingMsgs(true);
-    setError('');
-    const token = localStorage.getItem('token');
-    console.log('[fetchMessages] for convId:', convId);
-    try {
-      const res = await fetch(`${apiBaseUrl}/api/conversations/${convId}/messages`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (!res.ok) {
-        setError('تعذر تحميل الرسائل.');
-        setMessages([]);
-        setLoadingMsgs(false);
-        console.error('[fetchMessages] response not ok:', res.status);
-        return;
-      }
-      const text = await res.text();
-      const data = JSON.parse(text);
-      console.log('[fetchMessages] response:', data);
-      if (data && data.messages && Array.isArray(data.messages.data)) {
-        const formattedMessages = data.messages.data.map((msg) => ({
-          ...msg,
-          created_date: formatDate(msg.created_at),
-        })).reverse(); // عكس الترتيب كما في المثال
-        setMessages(formattedMessages);
-      } else {
-        setMessages([]);
-      }
-    } catch (e) {
-      console.error('[fetchMessages] error:', e);
-      setError('حدث خطأ أثناء تحميل الرسائل.');
-      setMessages([]);
-    } finally {
-      setLoadingMsgs(false);
-    }
-  };
-
-  const markAsRead = async (convId) => {
-    try {
-      const token = localStorage.getItem('token');
-      console.log('[markAsRead] convId:', convId);
-      await fetch(`${apiBaseUrl}/api/conversations/${convId}/read`, {
-        method: 'PUT',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      setConversations((prev) =>
-        prev.map((conv) => (conv.id === convId ? { ...conv, new_messages: 0 } : conv))
-      );
-    } catch (err) {
-      console.error('[markAsRead] error:', err);
-    }
-  };
-
-  useEffect(() => {
-    console.log('[useEffect] conversations or selectedConv changed', { conversations, selectedConv });
-    if (!pusherRef.current) return;
-
-    // تنظيف الاشتراكات السابقة
-    channelsRef.current.forEach((channel) => {
-      if (channel.stopListening) {
-        channel.stopListening('new-message');
-        channel.stopListening('pusher:member_added');
-        channel.stopListening('pusher:member_removed');
-      }
-    });
-    channelsRef.current = [];
-
-    // الاشتراك في قنوات Echo
-    conversations.forEach((conv) => {
-      if (!pusherRef.current) return;
-      const channel = pusherRef.current.channel(`conversation.${conv.id}`);
-      console.log('[Echo] subscribing to conversation channel:', `conversation.${conv.id}`);
-      channel.listen('new-message', (data) => {
-        console.log('[Echo] new-message event:', data);
-        const newMessage = {
-          ...data.message,
-          created_date: formatDate(data.message.created_at),
-          user: data.user,
-        };
-        setMessages((prev) => {
-          const filtered = prev.filter((msg) => typeof msg.id === 'string' && msg.id.startsWith('temp-') === false);
-          return [...filtered, newMessage].sort(
-            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          );
-        });
-        setConversations((prev) =>
-          prev.map((c) => {
-            if (c.id === data.message.conversation_id) {
-              return {
-                ...c,
-                last_message: {
-                  ...c.last_message,
-                  body: data.message.body,
-                  created_date: formatDate(data.message.created_at),
-                  id: c.last_message?.id ?? '', // Ensure id is always present
-                },
-                new_messages: c.id === selectedConv?.id ? 0 : (c.new_messages || 0) + 1,
-              };
-            }
-            return c;
-          }) as Conversation[]
-        );
-        if (selectedConv && selectedConv.id === data.message.conversation_id) {
-          markAsRead(selectedConv.id);
-        }
-        alertAudio.play(); // تشغيل الصوت عند وصول رسالة
-      });
-
-      // تحديث حالة الاتصال عبر قناة Chat
-      const chatChannel = pusherRef.current.channel('Chat');
-      chatChannel.listen('pusher:member_added', (member) => {
-        console.log('[Echo] pusher:member_added', member);
-        setConversations((prev) =>
-          prev.map((c) => {
-            if (c.participants && c.participants[0]?.id === member.id) {
-              return { ...c, participants: [{ ...c.participants[0], isOnline: true }] };
-            }
-            return c;
-          })
-        );
-      });
-      chatChannel.listen('pusher:member_removed', (member) => {
-        console.log('[Echo] pusher:member_removed', member);
-        setConversations((prev) =>
-          prev.map((c) => {
-            if (c.participants && c.participants[0]?.id === member.id) {
-              return { ...c, participants: [{ ...c.participants[0], isOnline: false }] };
-            }
-            return c;
-          })
-        );
-      });
-
-      channelsRef.current.push(channel);
-    });
-
-    return () => {
-      console.log('[useEffect cleanup] unsubscribing all channels');
-      channelsRef.current.forEach((channel) => {
-        if (channel.stopListening) {
-          channel.stopListening('new-message');
-          channel.stopListening('pusher:member_added');
-          channel.stopListening('pusher:member_removed');
-        }
-      });
-    };
-  }, [conversations, selectedConv]);
+  }, []);
 
   const fetchAuthUser = async () => {
     const token = localStorage.getItem('token');
@@ -342,46 +130,170 @@ const Messenger = () => {
     }
   };
 
+  const fetchConversations = async (page = 1) => {
+    if (page === 1) setLoadingConvs(true);
+    else setLoadingMore(true);
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/conversations?page=${page}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await res.json();
+      // عدل حسب شكل استجابة الـ API لديك
+      const newConvs = Array.isArray(data.data) ? data.data : data;
+      setConversations((prev) => page === 1 ? newConvs : [...prev, ...newConvs]);
+      setHasMore(data.next_page_url !== null && data.next_page_url !== undefined); // أو حسب استجابة الـ API
+      setCurrentPage(page);
+    } catch (e) {
+      console.error('[fetchConversations] error:', e);
+    } finally {
+      setLoadingConvs(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const fetchMessages = async (convId, page = 1) => {
+    if (page === 1) setLoadingMsgs(true);
+    else setLoadingMoreMsgs(true);
+    setError('');
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/conversations/${convId}/messages?page=${page}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        setError('تعذر تحميل الرسائل.');
+        setMessages([]);
+        setLoadingMsgs(false);
+        setLoadingMoreMsgs(false);
+        return;
+      }
+      const text = await res.text();
+      const data = JSON.parse(text);
+      if (data?.messages?.data && Array.isArray(data.messages.data)) {
+        const formattedMessages = data.messages.data.map((msg) => ({
+          ...msg,
+          created_date: formatDate(msg.created_at),
+        })).reverse();
+        setMessages((prev) => page === 1 ? formattedMessages : [...formattedMessages, ...prev]);
+        setHasMoreMsgs(!!data.messages.prev_page_url);
+        setCurrentMsgPage(page);
+      } else {
+        if (page === 1) setMessages([]);
+        setHasMoreMsgs(false);
+      }
+    } catch (e) {
+      setError('حدث خطأ أثناء تحميل الرسائل.');
+      if (page === 1) setMessages([]);
+      setHasMoreMsgs(false);
+    } finally {
+      setLoadingMsgs(false);
+      setLoadingMoreMsgs(false);
+    }
+  };
+
+  const markAsRead = async (convId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`${apiBaseUrl}/api/conversations/${convId}/read`, {
+        method: 'PUT',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      setConversations((prev) =>
+        prev.map((conv) => (conv.id === convId ? { ...conv, new_messages: 0 } : conv))
+      );
+    } catch (err) {
+      console.error('[markAsRead] error:', err);
+    }
+  };
+
+  // اشتراك Pusher في قناة Messenger.{authUser.id} (بدون كلمة private)
   useEffect(() => {
-    console.log('[useEffect] mount fetchAuthUser');
+    if (!authUser || !echo) return;
+    const channelName = `Messenger.${authUser.id}`;
+    const channel = echo.channel(channelName);
+    console.log(`[Pusher] Subscribing to channel: ${channelName}`);
+    channel.listen('.new-message', (data) => {
+      console.log('[Pusher] Received new-message event:', data);
+      const newMessage = {
+        ...data.message,
+        created_date: formatDate(data.message.created_at),
+        user: data.user,
+      };
+      // إذا كانت الرسالة المؤقتة موجودة (بنفس body و user_id)، احذفها وأضف الجديدة فقط
+      setMessages((prev) => {
+        const filtered = prev.filter(
+          (msg) =>
+            !msg.is_temp ||
+            msg.body !== newMessage.body ||
+            msg.user_id !== newMessage.user_id
+        );
+        // إذا كانت الرسالة موجودة فعلاً (بنفس id)، لا تضفها
+        if (filtered.some((msg) => msg.id === newMessage.id)) return filtered;
+        return [...filtered, newMessage];
+      });
+      // إذا كانت الرسالة تخص المحادثة المفتوحة، أضفها مباشرة
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id === data.message.conversation_id) {
+            return {
+              ...c,
+              last_message: {
+                ...c.last_message,
+                body: data.message.body,
+                created_date: formatDate(data.message.created_at),
+                id: c.last_message?.id ?? '',
+              },
+              new_messages: (c.new_messages || 0) + (selectedConv && selectedConv.id === data.message.conversation_id ? 0 : 1),
+            } as Conversation;
+          }
+          return c;
+        })
+      );
+      // شغل صوت الإشعار فقط إذا كانت الرسالة من الطرف الآخر
+      if (authUser && data.message.user_id !== authUser.id) {
+        const alertAudio = new Audio('/assets/mixkit-correct-answer-tone-2870.wav');
+        alertAudio.play();
+      }
+    });
+    return () => {
+      console.log(`[Pusher] Unsubscribing from channel: ${channelName}`);
+      channel.stopListening('.new-message');
+      echo.leave(channelName);
+    };
+  }, [authUser, echo, selectedConv]);
+
+  useEffect(() => {
     fetchAuthUser();
   }, []);
 
   useEffect(() => {
-    console.log('[useEffect] authUser changed:', authUser);
-    if (authUser) fetchConversations();
+    if (authUser) {
+      fetchConversations(1);
+    }
   }, [authUser]);
 
   useEffect(() => {
-    console.log('[useEffect] selectedConv changed:', selectedConv);
     if (selectedConv?.id) {
-      fetchMessages(selectedConv.id);
-      markAsRead(selectedConv.id);
+      fetchMessages(selectedConv.id, 1);
+      setCurrentMsgPage(1);
+      setHasMoreMsgs(true);
     }
   }, [selectedConv]);
 
   useEffect(() => {
-    console.log('[useEffect] messages changed:', messages);
-    if (messages.length > 0) {
-        try {
-          const endRef = messagesEndRef.current;
-          const container = chatContainerRef.current;
-          if (endRef && container) {
-            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-          }
-        } catch (e) {
-          console.error('[useEffect] scroll error:', e);
-        }
+    if (messages.length > 0 && chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
     }
   }, [messages]);
-
-  useEffect(() => {
-    setShowSidebar(!isMobile);
-  }, [isMobile]);
 
   const handleSend = async (e) => {
     e.preventDefault();
     if ((!input.trim() && !selectedFile) || !selectedConv || !authUser) return;
+    
     const tempMessage = {
       id: `temp-${Date.now()}`,
       conversation_id: selectedConv.id,
@@ -393,31 +305,31 @@ const Messenger = () => {
       is_temp: true,
       file_name: selectedFile?.name || undefined,
     };
+    
     setMessages((prev) => [...prev, tempMessage]);
     setInput('');
     setSending(true);
     setError('');
+    
     const token = localStorage.getItem('token');
     const formData = new FormData();
     formData.append('conversation_id', selectedConv.id.toString());
     formData.append('message', input);
     if (selectedFile) formData.append('file', selectedFile);
+
     try {
-      console.log('[handleSend] sending message:', { input, selectedFile });
       const res = await fetch(`${apiBaseUrl}/api/messages`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       });
+      
       if (!res.ok) {
-        setError('حدث خطأ أثناء إرسال الرسالة');
-        setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
-        console.error('[handleSend] response not ok:', res.status);
+        throw new Error('Failed to send message');
       }
     } catch (e) {
       setError('حدث خطأ أثناء إرسال الرسالة');
       setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
-      console.error('[handleSend] error:', e);
     } finally {
       setSending(false);
       setSelectedFile(null);
@@ -425,15 +337,12 @@ const Messenger = () => {
   };
 
   const handleSelectConv = (conv) => {
-    console.log('[handleSelectConv] selected:', conv);
     setSelectedConv(conv);
     if (isMobile) setShowSidebar(false);
   };
 
   const getOtherParticipant = (conv) => {
-    const other = (conv.participants || []).find((p) => p.id !== authUser?.id) || conv.participants?.[0];
-    console.log('[getOtherParticipant] for conv:', conv, '=>', other);
-    return other;
+    return (conv.participants || []).find((p) => p.id !== authUser?.id) || conv.participants?.[0];
   };
 
   return (
@@ -443,11 +352,13 @@ const Messenger = () => {
           className="w-full md:w-1/4 max-w-full md:max-w-1/4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 flex-shrink-0 flex flex-col h-[90vh] mb-4 md:mb-0"
           style={{ zIndex: 20 }}
         >
-          <CardHeader className="flex flex-row items-center gap-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-t-2xl p-4">
+          <CardHeader className="flex flex-row justify-start gap-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-t-2xl py-4 px-4">
+                        <span className="mt-3 me-2 w-3 h-3 rounded-full bg-green-400 inline-block"></span>
             <CardTitle className="text-lg font-bold text-gray-800 dark:text-gray-100">الدردشة والاستفسارات</CardTitle>
-            <span className="ml-auto w-3 h-3 rounded-full bg-green-400 inline-block"></span>
           </CardHeader>
           <CardContent className="flex-1 overflow-y-auto custom-scrollbar p-0">
+
+            {loadingMore && <div className="text-center py-2">جاري التحميل...</div>}
             {loadingConvs ? (
               <div className="flex justify-center items-center h-full">
                 <Loading />
@@ -469,7 +380,6 @@ const Messenger = () => {
                     <div className="relative">
                       <Avatar>
                         <AvatarImage src={other?.profile_photo_url} alt={other?.name} />
-                        <AvatarFallback>{(other?.name || 'م').slice(0, 1)}</AvatarFallback>
                       </Avatar>
                       {other?.isOnline && <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>}
                     </div>
@@ -497,7 +407,7 @@ const Messenger = () => {
         </Card>
       )}
       {selectedConv && (!isMobile || !showSidebar) && (
-        <Card className="flex-1 w-full max-w-3/4 mx-4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 flex flex-col h-[85vh] relative transition-all duration-300">
+        <Card className="flex-1 w-full max-w-3/4 mx-4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 flex flex-col h-[90vh] relative transition-all duration-300 mb-4 md:mb-0">
           {isMobile && (
             <button
               className="absolute top-4 left-4 z-30 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded-full w-10 h-10 flex items-center justify-center shadow-md border border-blue-200 dark:border-blue-700"
@@ -509,11 +419,10 @@ const Messenger = () => {
               </svg>
             </button>
           )}
-          <CardHeader className="flex flex-row items-center gap-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-t-2xl p-4">
+          <CardHeader className="flex flex-row items-center gap-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-t-2xl py-1.5 px-4">
             <div className="relative">
               <Avatar>
                 <AvatarImage src={getOtherParticipant(selectedConv)?.profile_photo_url} alt={getOtherParticipant(selectedConv)?.name} />
-                <AvatarFallback>{(getOtherParticipant(selectedConv)?.name || 'م').slice(0, 1)}</AvatarFallback>
               </Avatar>
               {getOtherParticipant(selectedConv)?.isOnline && <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>}
             </div>
@@ -521,9 +430,30 @@ const Messenger = () => {
               <CardTitle className="font-bold text-gray-800 dark:text-gray-100 text-base">{getOtherParticipant(selectedConv)?.name || 'مستخدم'}</CardTitle>
               <div className="text-xs text-gray-400">{selectedConv.last_message?.created_date || selectedConv.updated_date || ''}</div>
             </div>
+                {/* <div className="flex justify-center mb-4">
+                  <button
+                    className="py-1 px-4 bg-gray-200 dark:bg-gray-700 rounded-full text-blue-600 font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+                    onClick={() => fetchMessages(selectedConv.id, currentMsgPage + 1)}
+                  >
+                    عرض المزيد
+                  </button>
+                </div> */}
           </CardHeader>
           <div ref={chatContainerRef} className="flex-1 h-0 overflow-y-auto custom-scrollbar bg-gray-200">
             <CardContent className="px-2 py-4 md:px-6 md:py-6">
+              {/* زر عرض المزيد أعلى الرسائل */}
+              {/* {hasMoreMsgs && !loadingMoreMsgs && !loadingMsgs && messages.length > 0 && (
+                <div className="flex justify-center mb-4">
+                  <button
+                    className="py-1 px-4 bg-gray-200 dark:bg-gray-700 rounded-full text-blue-600 font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+                    onClick={() => fetchMessages(selectedConv.id, currentMsgPage + 1)}
+                  >
+                    عرض المزيد
+                  </button>
+                </div>
+              )} */}
+              {loadingMoreMsgs && <div className="text-center py-2">جاري تحميل المزيد...</div>}
+              {/* الرسائل */}
               {loadingMsgs ? (
                 <div className="flex justify-center items-center h-full">
                   <Loading />
@@ -537,12 +467,15 @@ const Messenger = () => {
                     const isAuth = msg.user_id === authUser?.id;
                     return (
                       <div key={msg.id} className={`flex ${isAuth ? 'justify-start' : 'justify-end'} mb-4 items-center gap-2 transition-all`}>
-                        {isAuth && (
-                          <Avatar className="flex-shrink-0">
-                            <AvatarImage src={msg.user?.profile_photo_url} alt={msg.user?.name} />
-                            <AvatarFallback>{(msg.user?.name || 'م').slice(0, 1)}</AvatarFallback>
-                          </Avatar>
-                        )}
+                        {/* {isAuth ?
+                        <Avatar className="flex-shrink-0">
+                          {msg.user?.profile_photo_url ? (
+                            <AvatarImage src={msg.user.profile_photo_url} alt={msg.user.name} />
+                          ) : (
+                            <AvatarFallback>{msg.user?.name?.[0]}</AvatarFallback>
+                          )}
+                        </Avatar>
+                          :<></>} */}
                         <div
                           className={`max-w-[90vw] md:max-w-[60%] rounded-2xl px-4 py-2 text-sm break-words ${
                             isAuth ? 'bg-blue-500 text-white dark:bg-blue-600 rounded-br-none shadow-md' : 'bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-none shadow-sm'
@@ -560,15 +493,18 @@ const Messenger = () => {
                             </div>
                           )}
                           <div className={`text-xs mt-1 ${isAuth ? 'text-blue-100 dark:text-blue-200 text-left' : 'text-gray-500 dark:text-gray-300 text-right'}`}>
-                            {msg.created_date}
+                            {formatRelativeTime(msg.created_at)}
                           </div>
                         </div>
-                        {!isAuth && (
-                          <Avatar className="flex-shrink-0">
-                            <AvatarImage src={msg.user?.profile_photo_url} alt={msg.user?.name} />
-                            <AvatarFallback>{(msg.user?.name || 'م').slice(0, 1)}</AvatarFallback>
-                          </Avatar>
-                        )}
+                                                {/* {!isAuth ?
+                        <Avatar className="flex-shrink-0">
+                          {msg.user?.profile_photo_url ? (
+                            <AvatarImage src={msg.user.profile_photo_url} alt={msg.user.name} />
+                          ) : (
+                            <AvatarFallback>{msg.user?.name?.[0]}</AvatarFallback>
+                          )}
+                        </Avatar>
+                          :<></>} */}
                       </div>
                     );
                   })
@@ -576,29 +512,29 @@ const Messenger = () => {
               <div ref={messagesEndRef} />
             </CardContent>
           </div>
-          <form onSubmit={handleSend} className="flex gap-2 items-center p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-2xl sticky bottom-0 z-10 shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.04)]">
+          <form onSubmit={handleSend} className="flex gap-2 items-center p-2 px-2 md:px-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-2xl sticky bottom-0 z-10 shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.04)]">
             <input type="file" id="chat-file-input" className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} title="إرفاق ملف" aria-label="إرفاق ملف" />
-            <label htmlFor="chat-file-input" className="cursor-pointer flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 mr-2">
-              <FiPaperclip className="text-xl text-gray-600 dark:text-gray-300" />
+            <label htmlFor="chat-file-input" className="cursor-pointer flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 mr-2">
+              <FiPaperclip className="text-lg text-gray-600 dark:text-gray-300" />
             </label>
             {selectedFile && <span className="text-xs text-blue-600 dark:text-blue-300 max-w-[100px] truncate">{selectedFile.name}</span>}
             <Input
               type="text"
-              className="flex-1 border border-blue-200 dark:border-blue-900 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-300 shadow-sm transition-all bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+              className="flex-1 border border-blue-200 dark:border-blue-900 rounded-xl px-4 py-1.5 text-base focus:outline-none focus:ring-2 focus:ring-blue-300 shadow-sm transition-all bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
               placeholder="اكتب رسالتك..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={sending}
               dir="rtl"
-              style={{ minHeight: 48 }}
+              style={{ minHeight: 40 }}
             />
             <button
               type="submit"
               disabled={sending || !input.trim()}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl w-14 h-14 flex items-center justify-center shadow-lg transition-all disabled:opacity-70 text-2xl"
-              style={{ minWidth: 56, minHeight: 56 }}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl w-10 h-10 flex items-center justify-center shadow-lg transition-all disabled:opacity-70 text-2xl"
+              style={{ minWidth: 40, minHeight: 40 }}
             >
-              {sending ? <span className="loader w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : <FiSend className="text-2xl" />}
+              {sending ? <span className="loader w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : <FiSend className="text-xl" />}
             </button>
           </form>
           {error && <div className="text-center text-red-600 mt-2">{error}</div>}
