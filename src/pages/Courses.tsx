@@ -52,30 +52,81 @@ const Courses = () => {
       .finally(() => setCategoriesLoading(false));
   }, []);
 
-  useEffect(() => {
+  const fetchAllCourses = async (baseUrl: string, token: string | null) => {
+    let allCourses: Course[] = [];
+    let currentPage = 1;
+    let hasMorePages = true;
+
+    while (hasMorePages) {
+      try {
+        const url = `${baseUrl}?page=${currentPage}`;
+        const response = await fetch(url, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        const data = await response.json();
+
+        if (Array.isArray(data.data)) {
+          allCourses = [...allCourses, ...data.data];
+
+          if (data.meta && data.meta.current_page < data.meta.last_page) {
+            currentPage++;
+          } else {
+            hasMorePages = false;
+          }
+        } else {
+          hasMorePages = false;
+        }
+      } catch (error) {
+        console.error('Error fetching page', currentPage, ':', error);
+        hasMorePages = false;
+      }
+    }
+
+    return allCourses;
+  };
+
+  const loadCourses = async () => {
     setLoading(true);
     const token = localStorage.getItem('token');
-    const url = selectedCategory === 'all'
-      ? `${apiBaseUrl}/api/courses`
-      : `${apiBaseUrl}/api/courses/${selectedCategory}`;
-    
-    fetch(url, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
-    })
-      .then(res => res.json())
-      .then(data => {
+
+    try {
+      let courses: Course[] = [];
+
+      if (selectedCategory === 'all') {
+        courses = await fetchAllCourses(`${apiBaseUrl}/api/courses`, token);
+      } else {
+        const url = `${apiBaseUrl}/api/courses/${selectedCategory}`;
+        const response = await fetch(url, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        const data = await response.json();
+
         if (Array.isArray(data.data)) {
-          setCourses(data.data);
+          courses = data.data;
+        } else if (Array.isArray(data.courses)) {
+          courses = data.courses;
+        } else if (Array.isArray(data)) {
+          courses = data;
         } else if (data.course) {
-          setCourses([data.course]);
-        } else {
-          setCourses([]);
+          courses = [data.course];
         }
-      })
-      .finally(() => setLoading(false));
+      }
+
+      console.log(`Loaded ${courses.length} courses for category:`, selectedCategory);
+      setCourses(courses);
+    } catch (error) {
+      console.error('Error loading courses:', error);
+      setCourses([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCourses();
   }, [selectedCategory]);
 
-  const filteredCourses = courses.filter(course => 
+  const filteredCourses = courses.filter(course =>
     course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (course.description && course.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -105,7 +156,7 @@ const Courses = () => {
           <p className="text-gray-600 dark:text-gray-300 mt-4 max-w-2xl mx-auto">
             اكتشف دوراتنا المميزة المصممة لتطوير مهاراتك وتأهيلك لسوق العمل
           </p>
-          
+
           <div className="relative max-w-2xl mx-auto mt-8">
             <input
               type="text"
@@ -123,11 +174,10 @@ const Courses = () => {
         ) : (
           <div className="flex gap-2 justify-start mb-8 overflow-x-auto pb-4 scrollbar-hide">
             <button
-              className={`px-4 py-2 rounded-xl whitespace-nowrap transition-all ${
-                selectedCategory === 'all' 
-                  ? 'bg-gradient-primary text-white shadow-lg' 
-                  : 'bg-white dark:bg-gray-800 text-black dark:text-white border border-gray-200 dark:border-gray-700'
-              }`}
+              className={`px-4 py-2 rounded-xl whitespace-nowrap transition-all ${selectedCategory === 'all'
+                ? 'bg-gradient-primary text-white shadow-lg'
+                : 'bg-white dark:bg-gray-800 text-black dark:text-white border border-gray-200 dark:border-gray-700'
+                }`}
               onClick={() => setSelectedCategory('all')}
             >
               الكل
@@ -135,11 +185,10 @@ const Courses = () => {
             {categories.map(cat => (
               <button
                 key={cat.id}
-                className={`px-4 py-2 rounded-xl whitespace-nowrap transition-all ${
-                  selectedCategory === cat.id 
-                    ? 'bg-gradient-primary text-white shadow-lg' 
-                    : 'bg-white dark:bg-gray-800 text-black dark:text-white border border-gray-200 dark:border-gray-700'
-                }`}
+                className={`px-4 py-2 rounded-xl whitespace-nowrap transition-all ${selectedCategory === cat.id
+                  ? 'bg-gradient-primary text-white shadow-lg'
+                  : 'bg-white dark:bg-gray-800 text-black dark:text-white border border-gray-200 dark:border-gray-700'
+                  }`}
                 onClick={() => setSelectedCategory(cat.id)}
               >
                 {cat.name}
@@ -147,7 +196,7 @@ const Courses = () => {
             ))}
           </div>
         )}
-        
+
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {[...Array(6)].map((_, i) => <CourseCardSkeleton key={i} />)}
@@ -161,7 +210,7 @@ const Courses = () => {
             <p className="text-gray-600 dark:text-gray-300">
               لم نعثر على أي دورات تطابق بحثك. جرب تغيير الفئة أو كلمات البحث.
             </p>
-            <button 
+            <button
               className="mt-6 px-6 py-2 rounded-xl bg-gradient-primary text-white font-medium"
               onClick={() => {
                 setSelectedCategory('all');
@@ -172,7 +221,7 @@ const Courses = () => {
             </button>
           </div>
         ) : (
-          <motion.div 
+          <motion.div
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
             variants={container}
             initial="hidden"
@@ -186,12 +235,12 @@ const Courses = () => {
                 onClick={() => navigate(`/courses/${course.id}`)}
                 whileHover={{ y: -5 }}
               >
-              <div className="relative">
+                <div className="relative">
                   {(course.icon || course.image) && (
-                    <img 
-                      src={course.icon || course.image} 
-                      alt={course.name} 
-                      className="w-full h-48 object-cover" 
+                    <img
+                      src={course.icon || course.image}
+                      alt={course.name}
+                      className="w-full h-48 object-cover"
                     />
                   )}
                   <div className="absolute top-4 left-4">
@@ -202,10 +251,10 @@ const Courses = () => {
                     )}
                   </div>
                 </div>
-                
+
                 <div className="p-6 flex flex-col flex-1">
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{course.name}</h3>
-                  
+
                   <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300 text-sm mb-4">
                     <span className="flex items-center gap-1">
                       <FiUsers /> {course.enroll_count ?? course.Enroll_count ?? 0} طلاب
@@ -219,7 +268,7 @@ const Courses = () => {
                   <p className="text-gray-600 dark:text-gray-300 text-base mb-5 flex-1 line-clamp-2">
                     {course.discription || course.description}
                   </p>
-                  
+
                   <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100 dark:border-gray-700">
                     <div className="flex items-center gap-2">
                       {course.userImage && (
@@ -227,7 +276,7 @@ const Courses = () => {
                       )}
                       <span className="text-sm text-gray-700 dark:text-gray-300">{course.user || '-'}</span>
                     </div>
-                    
+
                     <div className="flex items-center gap-3">
                       <span className="text-primary font-bold text-lg flex items-center gap-1">
                         <FiDollarSign />

@@ -38,19 +38,27 @@ const Header = () => {
     }
     return [
       { to: '/', label: 'الرئيسية' },
-      ...pathnames.map((segment, idx) => {
-        const to = '/' + pathnames.slice(0, idx + 1).join('/');
+      ...pathnames.filter((segment, idx) => {
+        // Skip 'lecture' segment in breadcrumb
+        if (pathnames[0] === 'courses' && segment === 'lecture' && idx === 2) {
+          return false;
+        }
+        return true;
+      }).map((segment, idx, filteredPathnames) => {
+        // Recalculate index for filtered array
+        const originalIdx = pathnames.indexOf(segment, idx > 0 ? pathnames.indexOf(filteredPathnames[idx - 1]) + 1 : 0);
+        const to = '/' + pathnames.slice(0, originalIdx + 1).join('/');
         let label = decodeURIComponent(segment);
-        if (pathnames[0] === 'courses' && idx === 1) {
+        if (pathnames[0] === 'courses' && originalIdx === 1) {
           label = localStorage.getItem('breadcrumb_course_name') || label;
         }
-        if (pathnames[0] === 'courses' && pathnames[2] === 'lecture' && idx === 3) {
+        if (pathnames[0] === 'courses' && pathnames[2] === 'lecture' && originalIdx === 3) {
           label = localStorage.getItem('breadcrumb_lecture_name') || label;
         }
-        if (pathnames[0] === 'articles' && idx === 1) {
+        if (pathnames[0] === 'articles' && originalIdx === 1) {
           label = localStorage.getItem('breadcrumb_article_title') || label;
         }
-        if (pathnames[0] === 'order-service' && idx === 1) {
+        if (pathnames[0] === 'order-service' && originalIdx === 1) {
           label = localStorage.getItem('breadcrumb_service_name') || label;
         }
         if (label === 'courses') label = 'الدورات';
@@ -80,7 +88,7 @@ const Header = () => {
   };
 
   useEffect(() => {
-      const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token');
     if (token) {
       dispatch(fetchUser());
     }
@@ -101,20 +109,20 @@ const Header = () => {
     if (isAuthenticated) {
       const token = localStorage.getItem('token');
       const fetchNotificationsData = () => {
-      // جلب عدد غير المقروءة
-      fetch('https://gazacodingspace.mahmoudalbatran.com/api/notifications/count', {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-        .then(res => res.json())
-        .then(count => setNotifCount(count))
-        .catch(() => setNotifCount(0));
-      // جلب آخر 5 إشعارات
-      fetch('https://gazacodingspace.mahmoudalbatran.com/api/notifications?page=1', {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-        .then(res => res.json())
-        .then(data => setNotifications(data.notifications?.data?.slice(0, 5) || []))
-        .catch(() => setNotifications([]));
+        // جلب عدد غير المقروءة
+        fetch('https://gazacodingspace.mahmoudalbatran.com/api/notifications/count', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+          .then(res => res.json())
+          .then(count => setNotifCount(count))
+          .catch(() => setNotifCount(0));
+        // جلب آخر 5 إشعارات
+        fetch('https://gazacodingspace.mahmoudalbatran.com/api/notifications?page=1', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+          .then(res => res.json())
+          .then(data => setNotifications(data.notifications?.data?.slice(0, 5) || []))
+          .catch(() => setNotifications([]));
       };
       fetchNotificationsData();
       const interval = setInterval(fetchNotificationsData, 30000); // كل 30 ثانية
@@ -156,40 +164,40 @@ const Header = () => {
 
   return (
     <>
-    <header className="sticky top-0 z-50 w-full border-b bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl shadow-lg supports-[backdrop-filter]:bg-white/40 dark:supports-[backdrop-filter]:bg-gray-900/40 transition-all overflow-hidden" dir="rtl">
-      <div className="relative z-10">
-        <div className="container flex h-16 items-center justify-between px-2 md:px-6">
+      <header className="sticky top-0 z-50 w-full border-b bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl shadow-lg supports-[backdrop-filter]:bg-white/40 dark:supports-[backdrop-filter]:bg-gray-900/40 transition-all overflow-hidden" dir="rtl">
+        <div className="relative z-10">
+          <div className="container flex h-16 items-center justify-between px-2 md:px-6">
             <a href="/" className="flex items-center gap-2 flex-row mx-0">
               <span className="inline-flex items-center justify-center rounded-lg bg-gradient-to-tr from-blue-500 to-purple-500 shadow-md ring-2 ring-blue-400/40 ring-offset-2 ring-offset-white dark:ring-offset-gray-900 transition-all animate-glow">
-              <img src="/assests/tebusoft.jpg" alt="TEBU SOFT" className="rounded-lg object-cover h-8 w-8 md:h-10 md:w-10 drop-shadow-glow" />
-            </span>
+                <img src="/assests/tebusoft.jpg" alt="TEBU SOFT" className="rounded-lg object-cover h-8 w-8 md:h-10 md:w-10 drop-shadow-glow" />
+              </span>
               <span className="font-extrabold text-lg md:text-xl tracking-tight drop-shadow-sm">
                 <span className="text-[#041665] dark:text-blue-200">TEBU</span>
                 <span className="text-blue-400/40 dark:text-purple-300/60 mx-1">SOFT</span>
               </span>
-          </a>
+            </a>
 
-          <nav className="hidden md:flex items-center gap-4 flex-row-reverse">
-            <ul className="flex flex-row gap-2 relative">
-              {navLinks.map((link) => {
-                const isActive = location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));
-                return (
-                  <li key={link.to} className="relative">
-                    <Link
-                      to={link.to}
+            <nav className="hidden md:flex items-center gap-4 flex-row-reverse">
+              <ul className="flex flex-row gap-2 relative">
+                {navLinks.map((link) => {
+                  const isActive = location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));
+                  return (
+                    <li key={link.to} className="relative">
+                      <Link
+                        to={link.to}
                         className={`relative px-2 md:px-3 py-1.5 text-base md:text-lg font-medium transition-colors duration-200
                         ${isActive ? 'text-blue-700 dark:text-blue-200 bg-blue-100/80 dark:bg-blue-900/40 shadow-md font-extrabold rounded scale-105 ring-2 ring-blue-200/60 dark:ring-blue-900/40' : 'text-gray-800 dark:text-gray-100 hover:text-blue-500 dark:hover:text-blue-300'}
                       `}
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
+                      >
+                        {link.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
 
-          <div className="flex items-center gap-2 flex-row">
+            <div className="flex items-center gap-2 flex-row">
               <Link
                 to="/chat"
                 className={`relative flex items-center justify-center rounded-full p-2 transition-colors hover:bg-blue-100/60 dark:hover:bg-blue-900/40 ${location.pathname.startsWith('/chat') ? 'bg-blue-100/80 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200' : 'text-blue-700 dark:text-gray-100'}`}
@@ -242,9 +250,9 @@ const Header = () => {
               </DropdownMenu>
               {/* User Menu + Desktop Search */}
               <div className="hidden md:flex items-center gap-2 flex-row-reverse">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <div className="flex items-center gap-2 cursor-pointer">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <div className="flex items-center gap-2 cursor-pointer">
                       {isAuthenticated && user ? (
                         <div className="flex items-center gap-2 cursor-pointer bg-white dark:bg-gray-900 text-blue-700 dark:text-blue-200 font-semibold text-base rounded-xl px-1.5 py-1 shadow border border-blue-100 dark:border-blue-900 max-w-[160px] truncate transition-colors">
                           <span className="flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 w-7 h-7 overflow-hidden">
@@ -255,50 +263,50 @@ const Header = () => {
                                 className="w-7 h-7 rounded-full object-cover"
                               />
                             ) : (
-                          <FiUser className="h-5 w-5 text-white" />
+                              <FiUser className="h-5 w-5 text-white" />
                             )}
-                        </span>
+                          </span>
                           {user.name ? user.name : 'مستخدم'}
-                      </div>
-                    )
-                      :
-                      <span className="flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 w-9 h-9">
-                        <FiUser className="h-5 w-5 text-white" />
-                      </span>
-                    }
-                  </div>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-48">
-                  <DropdownMenuItem onClick={handleThemeToggle} className="flex justify-between items-center gap-2 hover:bg-purple-50/80 hover:text-purple-700 focus:bg-purple-100/80 focus:text-purple-800 transition-all">
+                        </div>
+                      )
+                        :
+                        <span className="flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 w-9 h-9">
+                          <FiUser className="h-5 w-5 text-white" />
+                        </span>
+                      }
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48">
+                    <DropdownMenuItem onClick={handleThemeToggle} className="flex justify-between items-center gap-2 hover:bg-purple-50/80 hover:text-purple-700 focus:bg-purple-100/80 focus:text-purple-800 transition-all">
                       {theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
                       {theme === 'dark' ? <FiSun className="h-4 w-4" /> : <FiMoon className="h-4 w-4" />}
-                  </DropdownMenuItem>
-                  {isAuthenticated && user ? (
-                    <>
+                    </DropdownMenuItem>
+                    {isAuthenticated && user ? (
+                      <>
                         <DropdownMenuItem asChild className="hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
                           <Link to="/profile">الملف الشخصي</Link>
                         </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
-                        تسجيل الخروج
-                      </DropdownMenuItem>
-                    </>
-                  ) : (
-                    <>
-                      <DropdownMenuItem asChild className="hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
-                        <Link to="/login">تسجيل الدخول</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild className="hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
+                        <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
+                          تسجيل الخروج
+                        </DropdownMenuItem>
+                      </>
+                    ) : (
+                      <>
+                        <DropdownMenuItem asChild className="hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
+                          <Link to="/login">تسجيل الدخول</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild className="hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
                           <Link to="/register">إنشاء حساب</Link>
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
       {/* Breadcrumb */}
       {location.pathname !== '/' && (
         <div className="w-fit flex justify-start pt-4 pb-3 px-2 md:px-8">

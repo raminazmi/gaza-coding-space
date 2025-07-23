@@ -11,7 +11,13 @@ export function useDominantColorBackground(imageUrl: string | undefined, fallbac
     }
 
     const img = new window.Image();
-    img.crossOrigin = "Anonymous";
+
+    // Only set crossOrigin for same-origin images to avoid CORS issues
+    const isSameOrigin = imageUrl.startsWith('/') || imageUrl.includes(window.location.hostname);
+    if (isSameOrigin) {
+      img.crossOrigin = "Anonymous";
+    }
+
     img.src = imageUrl;
 
     img.onload = () => {
@@ -22,10 +28,15 @@ export function useDominantColorBackground(imageUrl: string | undefined, fallbac
           `linear-gradient(90deg, rgba(${color[0]},${color[1]},${color[2]},0.95) 60%, rgba(255,255,255,0.7) 100%)`
         );
       } catch (err) {
+        console.warn('Failed to extract dominant color:', err);
         setBackground(fallbackGradient);
       }
     };
-    img.onerror = () => setBackground(fallbackGradient);
+
+    img.onerror = () => {
+      console.warn('Failed to load image for color extraction:', imageUrl);
+      setBackground(fallbackGradient);
+    };
   }, [imageUrl, fallbackGradient]);
 
   return background;

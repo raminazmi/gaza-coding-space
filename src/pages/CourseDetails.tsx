@@ -10,6 +10,7 @@ import {
 import { MdOutlineVideoLibrary, MdOutlineQuiz, MdOutlineAssignment } from 'react-icons/md';
 import { BsBookmarkCheck, BsPatchCheck } from 'react-icons/bs';
 import CourseDetailsSkeleton from '@/components/ui/CourseDetailsSkeleton';
+import CourseEnrollVerificationModal from '@/components/ui/CourseEnrollVerificationModal';
 import { useDominantColorBackground } from "@/hooks/useDominantColorBackground";
 import defaultCourseImage from '@public/assests/webapplication.webp';
 
@@ -23,6 +24,9 @@ const CourseDetails = () => {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [didAutoExpand, setDidAutoExpand] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [hasAutoShownModal, setHasAutoShownModal] = useState(false);
+  const [isPendingVerification, setIsPendingVerification] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -68,6 +72,13 @@ const CourseDetails = () => {
     }
   }, [course, expanded, didAutoExpand]);
 
+  useEffect(() => {
+    if (enrollStatus && enrollStatus.status === 'pending' && !showVerificationModal && !hasAutoShownModal) {
+      setShowVerificationModal(true);
+      setHasAutoShownModal(true);
+    }
+  }, [enrollStatus, showVerificationModal, hasAutoShownModal]);
+
   const toggleFavorite = () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -105,24 +116,43 @@ const CourseDetails = () => {
     })
       .then(res => res.json())
       .then(data => {
-        if (data.success) {
-          setEnrollStatus(data.enrollStatus);
+        if (data.message) {
+          setShowVerificationModal(true);
+          setIsPendingVerification(true);
+          console.log('Enrollment initiated:', data.message);
         } else {
+          throw new Error('فشل في بدء عملية التسجيل');
         }
       })
       .catch(error => {
+        console.error('Enrollment error:', error);
       })
       .finally(() => setEnrollLoading(false));
+  };
+
+  const handleVerificationSuccess = () => {
+    setShowVerificationModal(false);
+    setIsPendingVerification(false);
+    // Refresh enrollment status
+    fetch(`${apiBaseUrl}/api/check-enroll/${courseId}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status) {
+          setEnrollStatus(data.enrollStatus);
+        }
+      });
   };
 
 
 
   function cleanMediaUrl(url: string) {
-    const storagePrefix = `${apiBaseUrl}/storage/`;
-    if (url?.startsWith(storagePrefix)) {
-      return url.replace(storagePrefix, '');
+    if (!url) return '';
+    if (url.startsWith('http')) {
+      return url;
     }
-    return url;
+    return `${apiBaseUrl}/storage/${url}`;
   }
 
   const renderLectureIcon = (lectureType: string) => {
@@ -141,7 +171,19 @@ const CourseDetails = () => {
   };
 
   const renderEnrollButton = () => {
-    if (enrollStatus) {
+    // Show pending verification button if either enrollStatus is pending OR isPendingVerification is true
+    if ((enrollStatus && enrollStatus.status === 'pending') || isPendingVerification) {
+      return (
+        <button
+          onClick={() => setShowVerificationModal(true)}
+          className="w-full bg-yellow-100 text-yellow-700 py-3 rounded-lg font-bold text-lg flex items-center justify-center gap-2 hover:bg-yellow-200 transition-colors"
+        >
+          <FiLock /> يجب التحقق من الكود
+        </button>
+      );
+    }
+
+    if (enrollStatus && enrollStatus.status === 'joined') {
       return (
         <button
           className="w-full bg-green-100 text-green-700 py-3 rounded-lg font-bold text-lg flex items-center justify-center gap-2"
@@ -196,10 +238,10 @@ const CourseDetails = () => {
     return `منذ ${Math.floor(diff / 31536000)} سنة`;
   }
 
-  const courseImage = defaultCourseImage;
+  const courseImage = course?.image ? cleanMediaUrl(course.image) : defaultCourseImage;
   const headerBg = useDominantColorBackground(courseImage);
 
-    if (loading) {
+  if (loading) {
     return (
       <CourseDetailsSkeleton />
     );
@@ -223,15 +265,15 @@ const CourseDetails = () => {
     );
   }
 
-    const chapters = course.chapters || [];
+  const chapters = course.chapters || [];
   const totalMinutes = (course.chapters || []).reduce((acc, chapter) =>
     acc + (chapter.lectures?.reduce((sum, lec) => sum + parseMinutes(lec.timeLecture), 0) || 0), 0
   );
-  
-const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-  e.currentTarget.src = '/assets/images.jpeg';
-};
-  
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    e.currentTarget.src = '/assets/images.jpeg';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900" dir="rtl">
       <div className="shadow text-white py-8" style={{ background: headerBg }}>
@@ -246,17 +288,17 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
                   <button
                     className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-30 hover:bg-opacity-40 transition-all"
                     onClick={() => navigate(`/courses/${courseId}/lecture/${course.chapters[0]?.lectures[0]?.id}`)}
-                                           title="تحميل الملف"
+                    title="تحميل الملف"
                   >
                     <FiPlay className="text-4xl" />
                   </button>
                 </div>
-              ) : course.image ? (
+              ) : courseImage ? (
                 <img
-                    src={courseImage}
-                     onError={handleImageError}
-                    alt={course.name}
-                     loading="lazy" 
+                  src={courseImage}
+                  onError={handleImageError}
+                  alt={course.name}
+                  loading="lazy"
                   className="w-full max-w-md h-48 md:h-64 object-cover rounded-xl shadow-2xl"
                 />
               ) : (
@@ -355,7 +397,105 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {chapters.map((chapter: any, idx) => (
+                        {/* Show limited content if not enrolled or pending */}
+                        {(!enrollStatus || enrollStatus.status === 'pending') && course.salary !== 'مجاني' ? (
+                          <>
+                            {/* Show only first chapter with max 2 lectures */}
+                            {chapters.slice(0, 1).map((chapter: any, idx) => (
+                              <div key={chapter.id} className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                                <button
+                                  className="w-full flex justify-between items-center px-5 py-4 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-gray-700 dark:text-gray-100 transition-all"
+                                  onClick={() => setExpanded(expanded === String(chapter.id) ? null : String(chapter.id))}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 flex items-center justify-center">
+                                      {idx + 1}
+                                    </div>
+                                    <span>{chapter.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm text-gray-500 dark:text-gray-300">
+                                      {Math.min(2, chapter.lectures?.length || 0)} من {chapter.lectures?.length || 0} محاضرة
+                                    </span>
+                                    {expanded === String(chapter.id) ? <FiChevronUp /> : <FiChevronDown />}
+                                  </div>
+                                </button>
+
+                                <div
+                                  className={`transition-all duration-300 overflow-hidden ${expanded === String(chapter.id) ? 'max-h-screen' : 'max-h-0'}`}
+                                >
+                                  <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                                    {/* Show only first 2 lectures */}
+                                    {chapter.lectures?.slice(0, 2).map((lec: any, index: number) => (
+                                      <li
+                                        key={lec.id}
+                                        className="flex items-center justify-between px-5 py-3 cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-gray-800"
+                                        onClick={() => navigate(`/courses/${courseId}/lecture/${lec.id}`)}
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <div className="w-6 h-6 flex items-center justify-center">
+                                            {renderLectureIcon(lec.type)}
+                                          </div>
+                                          <span className="text-sm text-gray-700 dark:text-gray-100">
+                                            {index + 1}. {lec.name}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-xs text-gray-500 dark:text-gray-300">
+                                            {lec.timeLecture || '00:00'}
+                                          </span>
+                                          <FiPlay className="text-blue-500" />
+                                        </div>
+                                      </li>
+                                    ))}
+                                    
+                                    {/* Show enrollment message for remaining lectures */}
+                                    {chapter.lectures?.length > 2 && (
+                                      <li className="px-5 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
+                                        <div className="text-center">
+                                          <FiLock className="mx-auto text-2xl text-blue-600 dark:text-blue-400 mb-2" />
+                                          <p className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">
+                                            {chapter.lectures.length - 2} محاضرة إضافية متاحة
+                                          </p>
+                                          <p className="text-xs text-blue-600 dark:text-blue-400">
+                                            سجل في الكورس لمشاهدة جميع المحاضرات
+                                          </p>
+                                        </div>
+                                      </li>
+                                    )}
+                                  </ul>
+                                </div>
+                              </div>
+                            ))}
+                            
+                            {/* Show message for remaining chapters */}
+                            {chapters.length > 1 && (
+                              <div className="border border-blue-200 dark:border-blue-800 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-6 text-center">
+                                <FiLock className="mx-auto text-3xl text-blue-600 dark:text-blue-400 mb-3" />
+                                <h4 className="text-lg font-bold text-blue-800 dark:text-blue-300 mb-2">
+                                  {chapters.length - 1} فصل إضافي متاح
+                                </h4>
+                                <p className="text-sm text-blue-600 dark:text-blue-400 mb-4">
+                                  اكتشف المزيد من المحتوى الرائع بعد التسجيل في الكورس
+                                </p>
+                                <div className="flex flex-wrap gap-2 justify-center">
+                                  {chapters.slice(1, 4).map((chapter: any, idx) => (
+                                    <span key={chapter.id} className="bg-white dark:bg-gray-800 px-3 py-1 rounded-full text-xs text-gray-600 dark:text-gray-300 border border-blue-200 dark:border-blue-800">
+                                      {chapter.name}
+                                    </span>
+                                  ))}
+                                  {chapters.length > 4 && (
+                                    <span className="bg-white dark:bg-gray-800 px-3 py-1 rounded-full text-xs text-gray-600 dark:text-gray-300 border border-blue-200 dark:border-blue-800">
+                                      +{chapters.length - 4} المزيد
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          /* Show full content for enrolled users */
+                          chapters.map((chapter: any, idx) => (
                           <div key={chapter.id} className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
                             <button
                               className="w-full flex justify-between items-center px-5 py-4 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-gray-700 dark:text-gray-100 transition-all"
@@ -425,7 +565,8 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
                               </ul>
                             </div>
                           </div>
-                        ))}
+                        ))
+                        )}
                       </div>
                     )}
                   </div>
@@ -571,7 +712,7 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
           </main>
 
           {/* Sidebar */}
-        <aside className="w-full md:w-1/3 lg:w-1/4 bg-white dark:bg-gray-800 p-3 md:p-4 rounded-2xl shadow-xl mb-4 md:mb-0 md:sticky md:top-20 max-h-fit overflow-y-auto">
+          <aside className="w-full md:w-1/3 lg:w-1/4 bg-white dark:bg-gray-800 p-3 md:p-4 rounded-2xl shadow-xl mb-4 md:mb-0 md:sticky md:top-20 max-h-fit overflow-y-auto">
             {/* Course Card */}
             <div className="overflow-hidden">
               <div className="border-b border-gray-200 dark:border-gray-700">
@@ -598,7 +739,7 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
                     </span>
                     <span className="font-medium">{course.chapters?.length || 0}</span>
                   </li>
-                 <li className="flex justify-between text-sm md:text-base">
+                  <li className="flex justify-between text-sm md:text-base">
                     <span className="text-gray-600 dark:text-gray-300 flex items-center gap-2">
                       <FiClock /> المدة
                     </span>
@@ -676,7 +817,7 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
                     </p>
                     <p className="text-xs md:text-sm mt-2">
                       الحالة: <span className="font-medium text-green-600">
-                        {enrollStatus.status === 'joined' ? 'مسجل' : enrollStatus.status}
+                        {enrollStatus.status === 'joined' ? 'مسجل' : enrollStatus.status === 'pending' ? 'قيد التحقق' : enrollStatus.status}
                       </span>
                     </p>
                   </div>
@@ -686,7 +827,15 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
           </aside>
         </div>
       </div>
-    </div>
+
+      {/* Course Enrollment Verification Modal */}
+      <CourseEnrollVerificationModal
+        isOpen={showVerificationModal}
+        onClose={() => setShowVerificationModal(false)}
+        courseId={courseId!}
+        onSuccess={handleVerificationSuccess}
+      />
+    </div >
   );
 };
 

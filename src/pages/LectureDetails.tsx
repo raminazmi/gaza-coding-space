@@ -21,6 +21,7 @@ const LectureDetails = () => {
   const [lecture, setLecture] = useState<any>(null);
   const [course, setCourse] = useState<any>(null);
   const [chapters, setChapters] = useState<any[]>([]);
+  const [enrollStatus, setEnrollStatus] = useState<any>(null);
   const [discussions, setDiscussions] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const [expanded, setExpanded] = useState(null);
@@ -51,12 +52,18 @@ const LectureDetails = () => {
     Promise.all([
       fetchWithAuth(`${apiBaseUrl}/api/showLecture/${courseId}/${lectureId}`),
       fetchWithAuth(`${apiBaseUrl}/api/LectureDetails/${courseId}/${lectureId}`),
-    ]).then(([lectureRes, courseRes]) => {
+      token ? fetchWithAuth(`${apiBaseUrl}/api/check-enroll/${courseId}`) : Promise.resolve(null),
+    ]).then(([lectureRes, courseRes, enrollRes]) => {
       console.log('lectureRes.Lecture:', lectureRes.Lecture); // طباعة بيانات المحاضرة من الـ API
       setLecture(lectureRes.Lecture); // هذا يحفظ is_watch القادم من الداتابيز
       setCourse(courseRes.course);
       setChapters(courseRes.course?.chapters || []);
       setExpanded(courseRes.course?.chapters?.[0]?.id?.toString() || null);
+
+      // Set enrollment status if available
+      if (enrollRes && enrollRes.status) {
+        setEnrollStatus(enrollRes.enrollStatus);
+      }
       if (courseRes.course && courseRes.course.name) {
         localStorage.setItem('breadcrumb_course_name', courseRes.course.name);
       }
@@ -235,6 +242,32 @@ const LectureDetails = () => {
   // طباعة بيانات lecture عند كل render
   console.log('lecture.is_watch?.status (render):', lecture?.is_watch?.status);
 
+  // Content restriction logic - show only first 2 lectures from first chapter if not enrolled or pending
+  const isEnrolled = enrollStatus && enrollStatus.status === 'joined';
+  const isPending = enrollStatus && enrollStatus.status === 'pending';
+  const shouldRestrictContent = !isEnrolled;
+
+  // Filter chapters and lectures based on enrollment status
+  const getFilteredChapters = () => {
+    if (isEnrolled) {
+      return chapters; // Show all chapters and lectures
+    }
+
+    // Show only first chapter with first 2 lectures
+    if (chapters.length > 0) {
+      const firstChapter = chapters[0];
+      const limitedLectures = firstChapter.lectures ? firstChapter.lectures.slice(0, 2) : [];
+      return [{
+        ...firstChapter,
+        lectures: limitedLectures
+      }];
+    }
+
+    return [];
+  };
+
+  const filteredChapters = getFilteredChapters();
+
   const hasMyDiscussionWithTeacher = discussions.some(d => {
     const isMyDiscussion = String(d.user?.id) === String(currentUserId);
     return isMyDiscussion;
@@ -275,122 +308,134 @@ const LectureDetails = () => {
             </div>
           </div>
 
-                  {/* Mobile Aside - Top */}
+          {/* Mobile Aside - Top */}
           <aside className="w-full bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-xl mb-4 md:hidden">
             <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 border-b border-gray-100 dark:border-gray-700 pb-2">محتوى الدورة</h2>
-          {chapters.length > 5 ? (
-            <div className="overflow-y-auto max-h-[350px]">
-              {chapters.map((chapter) => (
-                <div key={chapter.id} className="mb-3">
-                  <button
+            {shouldRestrictContent && (
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-xl p-4 mb-4 border border-blue-200 dark:border-blue-800">
+                <div className="text-center">
+                  <div className="text-blue-600 dark:text-blue-300 font-semibold text-sm mb-2">
+                    محتوى محدود
+                  </div>
+                  <div className="text-xs text-gray-600 dark:text-gray-300">
+                    يمكنك مشاهدة محاضرتين فقط من الفصل الأول. سجل في الدورة للوصول إلى جميع المحاضرات!
+                  </div>
+                </div>
+              </div>
+            )}
+            {filteredChapters.length > 5 ? (
+              <div className="overflow-y-auto max-h-[350px]">
+                {filteredChapters.map((chapter) => (
+                  <div key={chapter.id} className="mb-3">
+                    <button
                       className="w-full flex justify-between items-center px-3 py-3 rounded-xl bg-blue-50 hover:bg-blue-100 font-bold text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 mb-2 transition-all"
-                    onClick={() => setExpanded(expanded === chapter.id ? null : chapter.id)}
-                  >
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">{chapter.name}</span>
+                      onClick={() => setExpanded(expanded === chapter.id ? null : chapter.id)}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm">{chapter.name}</span>
                         <span className="text-xs text-gray-400 dark:text-gray-400">
                           ({chapter.lectures?.length || 0} محاضرة)
                         </span>
-                    </div>
-                    {expanded === chapter.id ? <FiChevronUp /> : <FiChevronDown />}
-                  </button>
-                  <div
-                    className={`transition-all duration-300 overflow-hidden ${expanded === chapter.id ? 'max-h-96' : 'max-h-0'}`}
-                    dir="rtl"
-                  >
-                    <ul className="space-y-1 px-1 pt-1">
-                      {chapter.lectures?.length === 0 && (
-                        <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
-                      )}
-                      {chapter.lectures?.map((lec) => (
-                        <li
-                          key={lec.id}
-                          className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${String(lec.id) === String(lectureId)
+                      </div>
+                      {expanded === chapter.id ? <FiChevronUp /> : <FiChevronDown />}
+                    </button>
+                    <div
+                      className={`transition-all duration-300 overflow-hidden ${expanded === chapter.id ? 'max-h-96' : 'max-h-0'}`}
+                      dir="rtl"
+                    >
+                      <ul className="space-y-1 px-1 pt-1">
+                        {chapter.lectures?.length === 0 && (
+                          <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
+                        )}
+                        {chapter.lectures?.map((lec) => (
+                          <li
+                            key={lec.id}
+                            className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${String(lec.id) === String(lectureId)
                               ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm dark:from-gray-800 dark:to-gray-900 dark:border-blue-900'
                               : 'hover:bg-gray-50 dark:hover:bg-gray-800'
-                            }`}
-                          onClick={() => navigate(`/courses/${courseId}/lecture/${lec.id}`)}
-                        >
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${lec.is_watch?.status === 'endWatch'
-                            ? 'bg-green-500 border-green-500 text-white'
-                            : 'border-gray-300'
-                            }`}>
-                            {lec.is_watch?.status === 'endWatch' && (
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </div>
-                          <span className={`text-sm truncate ${String(lec.id) === String(lectureId)
+                              }`}
+                            onClick={() => navigate(`/courses/${courseId}/lecture/${lec.id}`)}
+                          >
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${lec.is_watch?.status === 'endWatch'
+                              ? 'bg-green-500 border-green-500 text-white'
+                              : 'border-gray-300'
+                              }`}>
+                              {lec.is_watch?.status === 'endWatch' && (
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className={`text-sm truncate ${String(lec.id) === String(lectureId)
                               ? 'font-bold text-blue-700 dark:text-blue-300'
                               : 'text-gray-600 dark:text-gray-300'
-                            }`}>
-                            {lec.name}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
+                              }`}>
+                              {lec.name}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <>
-              {chapters.map((chapter) => (
-                <div key={chapter.id} className="mb-3">
-                  <button
+                ))}
+              </div>
+            ) : (
+              <>
+                {filteredChapters.map((chapter) => (
+                  <div key={chapter.id} className="mb-3">
+                    <button
                       className="w-full flex justify-between items-center px-3 py-3 rounded-xl bg-blue-50 hover:bg-blue-100 font-bold text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 mb-2 transition-all"
-                    onClick={() => setExpanded(expanded === chapter.id ? null : chapter.id)}
-                  >
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">{chapter.name}</span>
+                      onClick={() => setExpanded(expanded === chapter.id ? null : chapter.id)}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm">{chapter.name}</span>
                         <span className="text-xs text-gray-400 dark:text-gray-400">({chapter.lectures?.length || 0} محاضرة)</span>
-                    </div>
-                    {expanded === chapter.id ? <FiChevronUp /> : <FiChevronDown />}
-                  </button>
-                  <div
-                    className={`transition-all duration-300 overflow-hidden ${expanded === chapter.id ? 'max-h-96' : 'max-h-0'}`}
-                    style={{ direction: 'rtl' }}
-                  >
-                    <ul className="space-y-1 px-1 pt-1">
-                      {chapter.lectures?.length === 0 && (
-                        <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
-                      )}
-                      {chapter.lectures?.map((lec) => (
-                        <li
-                          key={lec.id}
-                          className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${String(lec.id) === String(lectureId)
+                      </div>
+                      {expanded === chapter.id ? <FiChevronUp /> : <FiChevronDown />}
+                    </button>
+                    <div
+                      className={`transition-all duration-300 overflow-hidden ${expanded === chapter.id ? 'max-h-96' : 'max-h-0'}`}
+                      style={{ direction: 'rtl' }}
+                    >
+                      <ul className="space-y-1 px-1 pt-1">
+                        {chapter.lectures?.length === 0 && (
+                          <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
+                        )}
+                        {chapter.lectures?.map((lec) => (
+                          <li
+                            key={lec.id}
+                            className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${String(lec.id) === String(lectureId)
                               ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm dark:from-gray-800 dark:to-gray-900 dark:border-blue-900'
                               : 'hover:bg-gray-50 dark:hover:bg-gray-800'
-                            }`}
-                          onClick={() => navigate(`/courses/${courseId}/lecture/${lec.id}`)}
-                        >
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${lec.is_watch?.status === 'endWatch'
-                            ? 'bg-green-500 border-green-500 text-white'
-                            : 'border-gray-300'
-                            }`}>
-                            {lec.is_watch?.status === 'endWatch' && (
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </div>
-                          <span className={`text-sm truncate ${String(lec.id) === String(lectureId)
+                              }`}
+                            onClick={() => navigate(`/courses/${courseId}/lecture/${lec.id}`)}
+                          >
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${lec.is_watch?.status === 'endWatch'
+                              ? 'bg-green-500 border-green-500 text-white'
+                              : 'border-gray-300'
+                              }`}>
+                              {lec.is_watch?.status === 'endWatch' && (
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className={`text-sm truncate ${String(lec.id) === String(lectureId)
                               ? 'font-bold text-blue-700 dark:text-blue-300'
                               : 'text-gray-600 dark:text-gray-300'
-                            }`}>
-                            {lec.name}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
+                              }`}>
+                              {lec.name}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </>
-          )}
+                ))}
+              </>
+            )}
           </aside>
-          
+
           {!hasMyDiscussionWithTeacher && (
             <form onSubmit={handleSend} className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl shadow-lg p-5 flex flex-col gap-4 border border-blue-100 dark:border-blue-900">
               <div className="flex flex-col gap-1">
@@ -589,9 +634,21 @@ const LectureDetails = () => {
         {/* Desktop Aside - Side */}
         <aside className="md:w-1/4 w-full bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-xl mb-4 md:mb-0 md:sticky md:top-20 max-h-fit overflow-y-auto hidden md:block">
           <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 border-b border-gray-100 dark:border-gray-700 pb-2">محتوى الدورة</h2>
-          {chapters.length > 5 ? (
+          {shouldRestrictContent && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-xl p-4 mb-4 border border-blue-200 dark:border-blue-800">
+              <div className="text-center">
+                <div className="text-blue-600 dark:text-blue-300 font-semibold text-sm mb-2">
+                  محتوى محدود
+                </div>
+                <div className="text-xs text-gray-600 dark:text-gray-300">
+                  يمكنك مشاهدة محاضرتين فقط من الفصل الأول. سجل في الدورة للوصول إلى جميع المحاضرات!
+                </div>
+              </div>
+            </div>
+          )}
+          {filteredChapters.length > 5 ? (
             <div className="overflow-y-auto" style={{ maxHeight: '350px' }}>
-              {chapters.map((chapter) => (
+              {filteredChapters.map((chapter) => (
                 <div key={chapter.id} className="mb-3">
                   <button
                     className="w-full flex justify-between items-center px-3 py-3 rounded-xl bg-blue-50 hover:bg-blue-100 font-bold text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 mb-2 transition-all"
@@ -646,7 +703,7 @@ const LectureDetails = () => {
             </div>
           ) : (
             <>
-              {chapters.map((chapter) => (
+              {filteredChapters.map((chapter) => (
                 <div key={chapter.id} className="mb-3">
                   <button
                     className="w-full flex justify-between items-center px-3 py-3 rounded-xl bg-blue-50 hover:bg-blue-100 font-bold text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 mb-2 transition-all"

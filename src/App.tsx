@@ -32,6 +32,7 @@ import ArticleDetails from "./pages/ArticleDetails";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import { PusherProvider } from "./context/PusherContext";
+import ProtectedLectureRoute from "./components/ProtectedLectureRoute";
 
 const queryClient = new QueryClient();
 
@@ -99,7 +100,11 @@ function App() {
                     <Route element={<PrivateRoute />}>
                       <Route path="/courses" element={<Courses />} />
                       <Route path="/courses/:id" element={<CourseDetails />} />
-                      <Route path="/courses/:courseId/lecture/:lectureId" element={<LectureDetails />} />
+                      <Route path="/courses/:courseId/lecture/:lectureId" element={
+                        <ProtectedLectureRoute>
+                          <LectureDetails />
+                        </ProtectedLectureRoute>
+                      } />
                       <Route path="/chat" element={<Messenger />} />
                       <Route path="/chat/:id" element={<ChatRoom />} />
                       <Route path="/profile" element={<Profile />} />
