@@ -22,7 +22,6 @@ const ProtectedLectureRoute: React.FC<ProtectedLectureRouteProps> = ({ children 
             try {
                 const token = localStorage.getItem('token');
 
-                // Fetch course details and enrollment status
                 const [courseRes, enrollRes] = await Promise.all([
                     fetch(`${apiBaseUrl}/api/LectureDetails/${courseId}/${lectureId}`, {
                         headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -35,7 +34,6 @@ const ProtectedLectureRoute: React.FC<ProtectedLectureRouteProps> = ({ children 
                 setCourse(courseRes.course);
                 setEnrollStatus(enrollRes?.enrollStatus || null);
 
-                // Check if user is enrolled
                 const isEnrolled = enrollRes?.enrollStatus?.status === 'joined';
 
                 if (isEnrolled) {
@@ -44,7 +42,6 @@ const ProtectedLectureRoute: React.FC<ProtectedLectureRouteProps> = ({ children 
                     return;
                 }
 
-                // If not enrolled, check if this lecture is in the first 2 lectures of first chapter
                 const chapters = courseRes.course?.chapters || [];
                 if (chapters.length > 0) {
                     const firstChapter = chapters[0];
@@ -54,15 +51,12 @@ const ProtectedLectureRoute: React.FC<ProtectedLectureRouteProps> = ({ children 
                     if (isAllowedLecture) {
                         setHasAccess(true);
                     } else {
-                        // User is trying to access a restricted lecture, redirect to first allowed lecture
                         if (allowedLectures.length > 0) {
-                            // Show toast notification
                             toast({
                                 title: 'غير مصرح لك',
                                 description: 'يجب التسجيل في الدورة للوصول إلى هذه المحاضرة. تم توجيهك إلى أول محاضرة متاحة.',
                                 variant: 'destructive'
                             });
-                            // Navigate to first allowed lecture
                             navigate(`/courses/${courseId}/lecture/${allowedLectures[0].id}`, { replace: true });
                             return;
                         } else {
@@ -97,7 +91,6 @@ const ProtectedLectureRoute: React.FC<ProtectedLectureRouteProps> = ({ children 
     }
 
     if (!hasAccess) {
-        // Redirect to course details page
         navigate(`/courses/${courseId}`, { replace: true });
         return null;
     }

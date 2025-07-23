@@ -2,9 +2,7 @@ import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 import { apiBaseUrl } from '@/lib/utils';
 
-// اجعل Pusher متاحاً عالمياً لـ laravel-echo
 if (typeof window !== 'undefined') {
-  // @ts-ignore
   window.Pusher = Pusher;
 }
 
@@ -12,7 +10,6 @@ let echo: Echo<any> | null = null;
 let currentToken: string | null = null;
 
 export function getEchoInstance(token: string) {
-  // إذا كان هناك اتصال موجود، أرجعه مباشرة (لا نقطع الاتصال أبداً)
   if (echo) {
     return echo;
   }
@@ -30,13 +27,11 @@ export function getEchoInstance(token: string) {
     },
   });
 
-  // احفظ التوكن الحالي
   currentToken = token;
 
   return echo;
 }
 
-// دالة لقطع الاتصال عند تسجيل الخروج
 export function disconnectEcho() {
   if (echo) {
     echo.disconnect();
@@ -45,7 +40,6 @@ export function disconnectEcho() {
   }
 }
 
-// دالة للتحقق من حالة الاتصال
 export function isEchoConnected(): boolean {
   return echo !== null;
 }

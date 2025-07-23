@@ -19,7 +19,6 @@ const formatDate = (dateString) => {
   });
 };
 
-// دالة لعرض الوقت بشكل نسبي أو التاريخ والوقت إذا مر أكثر من أسبوع
 function formatRelativeTime(dateString) {
   const now = new Date();
   const date = new Date(dateString);
@@ -34,7 +33,6 @@ function formatRelativeTime(dateString) {
   if (diffHour < 24) return `منذ ${diffHour} ساعة${diffHour === 1 ? '' : ''}`;
   if (diffDay < 7) return `منذ ${diffDay} يوم${diffDay === 1 ? '' : ''}`;
 
-  // إذا مر أكثر من أسبوع، اعرض التاريخ والوقت بشكل مختصر
   return date.toLocaleString('ar-EG', {
     day: '2-digit',
     month: '2-digit',
@@ -45,7 +43,6 @@ function formatRelativeTime(dateString) {
   });
 }
 
-// Type definitions
 type Participant = {
   id: number;
   name: string;
@@ -95,7 +92,7 @@ const Messenger = () => {
   const [authUser, setAuthUser] = useState<Participant | null>(null);
   const { echo } = usePusher();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [visibleConvs, setVisibleConvs] = useState(10); // عدد المحادثات المعروضة مبدئياً
+  const [visibleConvs, setVisibleConvs] = useState(10);
   const [currentMsgPage, setCurrentMsgPage] = useState(1);
   const [hasMoreMsgs, setHasMoreMsgs] = useState(true);
   const [loadingMoreMsgs, setLoadingMoreMsgs] = useState(false);
@@ -139,11 +136,9 @@ const Messenger = () => {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await res.json();
-      // عدل حسب شكل استجابة الـ API لديك
       const newConvs = Array.isArray(data.data) ? data.data : data;
       setConversations((prev) => page === 1 ? newConvs : [...prev, ...newConvs]);
-      setHasMore(data.next_page_url !== null && data.next_page_url !== undefined); // أو حسب استجابة الـ API
-      setCurrentPage(page);
+      setHasMore(data.next_page_url !== null && data.next_page_url !== undefined);
     } catch (e) {
       console.error('[fetchConversations] error:', e);
     } finally {
@@ -207,14 +202,12 @@ const Messenger = () => {
     }
   };
 
-  // اشتراك Pusher في قناة Messenger.{authUser.id} (بدون كلمة private)
   useEffect(() => {
     if (!authUser || !echo) return;
     const channelName = `Messenger.${authUser.id}`;
-    const channel = echo.channel(channelName);
+    const channel = echo.join(channelName);
     console.log(`[Pusher] Subscribing to channel: ${channelName}`);
 
-    // التحقق من وجود listener مسبق لتجنب التكرار
     const existingListeners = channel.listeners || {};
     if (!existingListeners['.new-message']) {
       channel.listen('.new-message', (data) => {
@@ -224,19 +217,15 @@ const Messenger = () => {
           created_date: formatDate(data.message.created_at),
           user: data.user,
         };
-        // تجاهل الرسائل المرسلة من المستخدم الحالي (لأنه يراها مباشرة)
         if (data.message.user_id === authUser.id) {
           console.log('[Pusher] Ignoring own message via Pusher');
           return;
         }
 
-        // إضافة الرسائل من الآخرين فقط
         setMessages((prev) => {
-          // إذا كانت الرسالة موجودة فعلاً (بنفس id)، لا تضفها
           if (prev.some((msg) => msg.id === newMessage.id)) return prev;
           return [...prev, newMessage];
         });
-        // إذا كانت الرسالة تخص المحادثة المفتوحة، أضفها مباشرة
         setConversations((prev) =>
           prev.map((c) => {
             if (c.id === data.message.conversation_id) {
@@ -254,7 +243,6 @@ const Messenger = () => {
             return c;
           })
         );
-        // شغل صوت الإشعار فقط إذا كانت الرسالة من الطرف الآخر
         if (authUser && data.message.user_id !== authUser.id) {
           const alertAudio = new Audio('/assets/mixkit-correct-answer-tone-2870.wav');
           alertAudio.play();
@@ -262,8 +250,6 @@ const Messenger = () => {
       });
     }
 
-    // لا نقوم بإزالة الاشتراك أو قطع الاتصال - نتركه مستمراً
-    // eslint-disable-next-line
   }, [authUser, echo]);
 
   useEffect(() => {
@@ -310,10 +296,8 @@ const Messenger = () => {
       file_name: selectedFile?.name || undefined,
     };
 
-    // إضافة الرسالة مباشرة في الواجهة (بدون انتظار Pusher)
     setMessages((prev) => [...prev, tempMessage]);
 
-    // تحديث قائمة المحادثات مباشرة
     setConversations((prev) =>
       prev.map((c) => {
         if (c.id === selectedConv.id) {
@@ -352,7 +336,6 @@ const Messenger = () => {
         throw new Error('Failed to send message');
       }
 
-      // عند نجاح الإرسال، استبدال الرسالة المؤقتة بالرسالة الفعلية
       const responseData = await res.json();
       if (responseData.message) {
         const realMessage = {
@@ -370,15 +353,13 @@ const Messenger = () => {
       }
     } catch (e) {
       setError('حدث خطأ أثناء إرسال الرسالة');
-      // إزالة الرسالة المؤقتة في حالة الفشل
       setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
-      // إعادة تحديث قائمة المحادثات
       setConversations((prev) =>
         prev.map((c) => {
           if (c.id === selectedConv.id) {
             return {
               ...c,
-              last_message: c.last_message, // إعادة الرسالة الأصلية
+              last_message: c.last_message,
             } as Conversation;
           }
           return c;
