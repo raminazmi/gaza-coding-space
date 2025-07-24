@@ -20,6 +20,9 @@ import {
 } from '@/components/ui/breadcrumb';
 import React from 'react';
 import { messaging, getToken } from '../../firebase';
+import { usePusher } from '@/context/PusherContext';
+import { disconnectEcho } from '@/lib/echo';
+import { apiBaseUrl } from '@/lib/utils';
 
 const Header = () => {
   const dispatch = useAppDispatch();
@@ -28,6 +31,7 @@ const Header = () => {
   const isAuthenticated = useAppSelector((state) => state.user.isAuthenticated);
   const location = useLocation();
   const pathnames = location.pathname.split('/').filter(Boolean);
+  const { totalNewMessages } = usePusher();
   const breadcrumbItems = React.useMemo(() => {
     if (pathnames[0] === 'order-service') {
       return [
@@ -39,13 +43,11 @@ const Header = () => {
     return [
       { to: '/', label: 'الرئيسية' },
       ...pathnames.filter((segment, idx) => {
-        // Skip 'lecture' segment in breadcrumb
         if (pathnames[0] === 'courses' && segment === 'lecture' && idx === 2) {
           return false;
         }
         return true;
       }).map((segment, idx, filteredPathnames) => {
-        // Recalculate index for filtered array
         const originalIdx = pathnames.indexOf(segment, idx > 0 ? pathnames.indexOf(filteredPathnames[idx - 1]) + 1 : 0);
         const to = '/' + pathnames.slice(0, originalIdx + 1).join('/');
         let label = decodeURIComponent(segment);
@@ -97,6 +99,7 @@ const Header = () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     dispatch(logout());
+    disconnectEcho(); // فصل الاتصال عند تسجيل الخروج
     window.location.reload();
   };
 
@@ -109,15 +112,13 @@ const Header = () => {
     if (isAuthenticated) {
       const token = localStorage.getItem('token');
       const fetchNotificationsData = () => {
-        // جلب عدد غير المقروءة
-        fetch('https://gazacodingspace.mahmoudalbatran.com/api/notifications/count', {
+        fetch(`${apiBaseUrl}/api/notifications/count`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         })
           .then(res => res.json())
           .then(count => setNotifCount(count))
           .catch(() => setNotifCount(0));
-        // جلب آخر 5 إشعارات
-        fetch('https://gazacodingspace.mahmoudalbatran.com/api/notifications?page=1', {
+        fetch(`${apiBaseUrl}/api/notifications?page=1`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         })
           .then(res => res.json())
@@ -125,7 +126,7 @@ const Header = () => {
           .catch(() => setNotifications([]));
       };
       fetchNotificationsData();
-      const interval = setInterval(fetchNotificationsData, 30000); // كل 30 ثانية
+      const interval = setInterval(fetchNotificationsData, 30000);
       return () => clearInterval(interval);
     }
   }, [isAuthenticated]);
@@ -140,7 +141,7 @@ const Header = () => {
               const token = localStorage.getItem('token');
               const formData = new FormData();
               formData.append('token', currentToken);
-              fetch('https://gazacodingspace.mahmoudalbatran.com/api/device-tokens', {
+              fetch(`${apiBaseUrl}/api/device-tokens`, {
                 method: 'POST',
                 headers: token ? { Authorization: `Bearer ${token}` } : {},
                 body: formData,
@@ -155,10 +156,10 @@ const Header = () => {
     setNotifOpen(open);
     if (open && isAuthenticated) {
       const token = localStorage.getItem('token');
-      fetch('https://gazacodingspace.mahmoudalbatran.com/api/notifications/read_at', {
+      fetch(`${apiBaseUrl}/api/notifications/read_at`, {
         method: 'PUT',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      }).catch((error) => console.error('Error marking notifications as read:', error));
     }
   };
 
@@ -204,9 +205,10 @@ const Header = () => {
                 title="الدردشة"
               >
                 <FiMessageCircle className="h-6 w-6" />
-                {/* <Badge className="absolute -top-1 -right-1 bg-red-500 text-white">2</Badge> */}
+                {totalNewMessages > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold animate-pulse">{totalNewMessages}</span>
+                )}
               </Link>
-              {/* Notification Icon */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -248,7 +250,6 @@ const Header = () => {
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
-              {/* User Menu + Desktop Search */}
               <div className="hidden md:flex items-center gap-2 flex-row-reverse">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -268,12 +269,11 @@ const Header = () => {
                           </span>
                           {user.name ? user.name : 'مستخدم'}
                         </div>
-                      )
-                        :
+                      ) : (
                         <span className="flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 w-9 h-9">
                           <FiUser className="h-5 w-5 text-white" />
                         </span>
-                      }
+                      )}
                     </div>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-48">
@@ -307,8 +307,7 @@ const Header = () => {
           </div>
         </div>
       </header>
-      {/* Breadcrumb */}
-      {location.pathname !== '/' && (
+      {location.pathname !== '/' && !location.pathname.startsWith('/chat') && (
         <div className="w-fit flex justify-start pt-4 pb-3 px-2 md:px-8">
           <div className="max-w-2xl w-full rounded-xl bg-gradient-to-l from-white/80 via-white/60 to-white/80 dark:from-gray-900/80 dark:via-gray-800/70 dark:to-gray-900/80 shadow-sm border border-gray-100 dark:border-gray-800 px-4 py-2 flex items-center gap-1 backdrop-blur-sm transition-all mx-2">
             <Breadcrumb>

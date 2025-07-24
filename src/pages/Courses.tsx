@@ -198,8 +198,8 @@ const Courses = () => {
         )}
 
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[...Array(6)].map((_, i) => <CourseCardSkeleton key={i} />)}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {[...Array(4)].map((_, i) => <CourseCardSkeleton key={i} />)}
           </div>
         ) : filteredCourses.length === 0 ? (
           <div className="text-center py-16">
@@ -222,7 +222,7 @@ const Courses = () => {
           </div>
         ) : (
           <motion.div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"
             variants={container}
             initial="hidden"
             animate="show"
@@ -243,16 +243,16 @@ const Courses = () => {
                       className="w-full h-48 object-cover"
                     />
                   )}
-                  <div className="absolute top-4 left-4">
+                  <div className="absolute top-2 left-2">
                     {course.category && (
-                      <span className="bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                      <span className="bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-md">
                         {course.category.name}
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="p-6 flex flex-col flex-1">
+                <div className="px-4 py-2 flex flex-col flex-1">
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{course.name}</h3>
 
                   <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300 text-sm mb-4">
@@ -269,7 +269,7 @@ const Courses = () => {
                     {course.discription || course.description}
                   </p>
 
-                  <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100 dark:border-gray-700">
+                  <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100 dark:border-gray-700">
                     <div className="flex items-center gap-2">
                       {course.userImage && (
                         <img src={course.userImage} alt={course.user} className="w-8 h-8 rounded-full" />
@@ -277,10 +277,10 @@ const Courses = () => {
                       <span className="text-sm text-gray-700 dark:text-gray-300">{course.user || '-'}</span>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <span className="text-primary font-bold text-lg flex items-center gap-1">
-                        <FiDollarSign />
+                    <div className="flex items-center gap-2">
+                      <span className="text-primary font-bold text-lg flex items-center gap-0.5">
                         {course.salary ? course.salary : 'مجاني'}
+                        {course.salary == 'مجاني' ? '' : <FiDollarSign />}
                       </span>
                       <button
                         className="rounded-xl bg-gradient-primary hover:shadow-glow px-4 py-2 text-white font-medium text-sm transition-all"

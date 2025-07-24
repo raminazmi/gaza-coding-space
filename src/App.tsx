@@ -24,6 +24,7 @@ import BottomNavigation from '@/components/ui/BottomNavigation';
 import LectureDetails from "./pages/LectureDetails";
 import ScrollToTop from "./ScrollToTop";
 import { useAppSelector } from "@/hooks/useAppSelector";
+import { useLocation } from "react-router-dom";
 import PortfolioDetails from "./pages/PortfolioDetails";
 import OrderService from "./pages/OrderService";
 import Messenger from "./pages/Messenger";
@@ -55,11 +56,14 @@ function PublicOnlyRoute() {
 
 function DefaultLayout() {
   const isMobile = useIsMobile();
+  const location = useLocation();
+  const isMessengerPage = location.pathname.includes('/chat');
+
   return (
     <div className="min-h-screen flex flex-col" dir="rtl">
-      <Header />
+      {((isMessengerPage && !isMobile) || !isMessengerPage) && <Header />}
       <main className="flex-1"><Outlet /></main>
-      <Footer />
+      {!isMessengerPage && <Footer />}
       {isMobile && <BottomNavigation />}
     </div>
   );
@@ -83,8 +87,8 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <BrowserRouter>
-              <PusherProvider>
+            <PusherProvider>
+              <BrowserRouter>
                 <ScrollToTop />
                 <ReduxLogger />
                 <Routes>
@@ -120,8 +124,8 @@ function App() {
                     <Route path="*" element={<NotFound />} />
                   </Route>
                 </Routes>
-              </PusherProvider>
-            </BrowserRouter>
+              </BrowserRouter>
+            </PusherProvider>
           </TooltipProvider>
         </QueryClientProvider>
       </PersistGate>

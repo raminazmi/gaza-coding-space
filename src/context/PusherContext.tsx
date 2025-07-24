@@ -1,31 +1,109 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { getEchoInstance } from '@/lib/echo';
+import { getEchoInstance, disconnectEcho } from '@/lib/echo';
 import { useAppSelector } from '@/hooks/useAppSelector';
+import { apiBaseUrl } from '@/lib/utils';
 
 interface PusherContextType {
   echo: ReturnType<typeof getEchoInstance> | null;
+  totalNewMessages: number;
+  setTotalNewMessages: React.Dispatch<React.SetStateAction<number>>;
 }
 
-const PusherContext = createContext<PusherContextType>({ echo: null });
+type Participant = {
+  id: number;
+  name: string;
+  profile_photo_url?: string;
+  isOnline?: boolean;
+};
+
+const PusherContext = createContext<PusherContextType>({
+  echo: null,
+  totalNewMessages: 0,
+  setTotalNewMessages: () => {},
+});
 
 export const usePusher = () => useContext(PusherContext);
 
 export const PusherProvider = ({ children }: { children: React.ReactNode }) => {
   const [echo, setEcho] = useState<ReturnType<typeof getEchoInstance> | null>(null);
+  const [totalNewMessages, setTotalNewMessages] = useState(0);
   const isAuthenticated = useAppSelector((state) => state.user.isAuthenticated);
+  const authUser = useAppSelector((state) => state.user.user);
 
+  // إنشاء اتصال Pusher
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (isAuthenticated && token) {
+    if (isAuthenticated && token && !echo) {
+      console.log('Connecting to Pusher...');
       const echoInstance = getEchoInstance(token);
       setEcho(echoInstance);
-    } else {
-      setEcho(null);
     }
+
+    return () => {
+      if (echo) {
+        console.log('Disconnecting from Pusher...');
+        disconnectEcho();
+        setEcho(null);
+      }
+    };
   }, [isAuthenticated]);
 
+  // جلب العدد الأولي للرسائل غير المقروءة عند تسجيل الدخول
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchInitialUnreadCount = async () => {
+      if (!isAuthenticated || !authUser) return;
+
+      const token = localStorage.getItem('token');
+      try {
+        const res = await fetch(`${apiBaseUrl}/api/conversations?page=1`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const data = await res.json();
+        const newConvs = Array.isArray(data.data) ? data.data : data;
+        const total = newConvs.reduce((sum, conv) => sum + (conv.new_messages || 0), 0);
+        if (isMounted) {
+          setTotalNewMessages(total);
+        }
+      } catch (e) {
+        console.error('Error fetching initial unread count:', e);
+        if (isMounted) {
+          setTotalNewMessages(0);
+        }
+      }
+    };
+
+    if (isAuthenticated && authUser) {
+      fetchInitialUnreadCount();
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, authUser]);
+
+  // الاشتراك في قناة Messenger
+  useEffect(() => {
+    if (!echo || !authUser) return;
+
+    const channelName = `Messenger.${authUser.id}`;
+    const channel = echo.private(channelName);
+
+    console.log(`Subscribing to channel: ${channelName}`);
+    channel.listen('.new-message', (data: any) => {
+      console.log('New message received:', data);
+      setTotalNewMessages((prev) => prev + 1);
+    });
+
+    return () => {
+      console.log(`Unsubscribing from channel: ${channelName}`);
+      echo.leave(channelName);
+    };
+  }, [echo, authUser]);
+
   return (
-    <PusherContext.Provider value={{ echo }}>
+    <PusherContext.Provider value={{ echo, totalNewMessages, setTotalNewMessages }}>
       {children}
     </PusherContext.Provider>
   );
