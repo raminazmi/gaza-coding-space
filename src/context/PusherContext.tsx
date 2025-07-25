@@ -30,7 +30,6 @@ export const PusherProvider = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useAppSelector((state) => state.user.isAuthenticated);
   const authUser = useAppSelector((state) => state.user.user);
 
-  // إنشاء اتصال Pusher
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (isAuthenticated && token && !echo) {
@@ -48,52 +47,20 @@ export const PusherProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, [isAuthenticated]);
 
-  // جلب العدد الأولي للرسائل غير المقروءة عند تسجيل الدخول
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchInitialUnreadCount = async () => {
-      if (!isAuthenticated || !authUser) return;
-
-      const token = localStorage.getItem('token');
-      try {
-        const res = await fetch(`${apiBaseUrl}/api/conversations?page=1`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json();
-        const newConvs = Array.isArray(data.data) ? data.data : data;
-        const total = newConvs.reduce((sum, conv) => sum + (conv.new_messages || 0), 0);
-        if (isMounted) {
-          setTotalNewMessages(total);
-        }
-      } catch (e) {
-        console.error('Error fetching initial unread count:', e);
-        if (isMounted) {
-          setTotalNewMessages(0);
-        }
-      }
-    };
-
-    if (isAuthenticated && authUser) {
-      fetchInitialUnreadCount();
-    }
-
-    return () => {
-      isMounted = false;
-    };
-  }, [isAuthenticated, authUser]);
-
-  // الاشتراك في قناة Messenger
   useEffect(() => {
     if (!echo || !authUser) return;
 
+    console.log('authUser:', authUser); // تحقق من بيانات authUser
     const channelName = `Messenger.${authUser.id}`;
     const channel = echo.private(channelName);
 
     console.log(`Subscribing to channel: ${channelName}`);
     channel.listen('.new-message', (data: any) => {
       console.log('New message received:', data);
-      setTotalNewMessages((prev) => prev + 1);
+      setTotalNewMessages((prev) => {
+        console.log('Updating totalNewMessages to:', prev + 1);
+        return prev + 1;
+      }); 
     });
 
     return () => {

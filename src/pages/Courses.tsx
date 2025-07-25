@@ -3,6 +3,7 @@ import { apiBaseUrl } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import CourseCardSkeleton from '@/components/ui/CourseCardSkeleton';
 import TabsSkeleton from '@/components/ui/TabsSkeleton';
+import Pagination from '@/components/ui/pagination'; // استيراد المكون الجديد
 import { FiUsers, FiBookOpen, FiDollarSign, FiSearch } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 
@@ -39,111 +40,90 @@ const Courses = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const navigate = useNavigate();
 
   useEffect(() => {
     setCategoriesLoading(true);
     const token = localStorage.getItem('token');
     fetch(`${apiBaseUrl}/api/categories`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
-      .then(res => res.json())
-      .then(data => setCategories(data.data || []))
+      .then((res) => res.json())
+      .then((data) => setCategories(data.data || []))
       .finally(() => setCategoriesLoading(false));
   }, []);
 
-  const fetchAllCourses = async (baseUrl: string, token: string | null) => {
-    let allCourses: Course[] = [];
-    let currentPage = 1;
-    let hasMorePages = true;
-
-    while (hasMorePages) {
-      try {
-        const url = `${baseUrl}?page=${currentPage}`;
-        const response = await fetch(url, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        });
-        const data = await response.json();
-
-        if (Array.isArray(data.data)) {
-          allCourses = [...allCourses, ...data.data];
-
-          if (data.meta && data.meta.current_page < data.meta.last_page) {
-            currentPage++;
-          } else {
-            hasMorePages = false;
-          }
-        } else {
-          hasMorePages = false;
-        }
-      } catch (error) {
-        console.error('Error fetching page', currentPage, ':', error);
-        hasMorePages = false;
-      }
-    }
-
-    return allCourses;
-  };
-
-  const loadCourses = async () => {
+  const fetchCourses = async (page: number) => {
     setLoading(true);
     const token = localStorage.getItem('token');
+    let url = '';
+
+    if (selectedCategory === 'all') {
+      url = `${apiBaseUrl}/api/courses?page=${page}&per_page=8${searchQuery ? `&search=${searchQuery}` : ''}`;
+    } else {
+      url = `${apiBaseUrl}/api/courses/${selectedCategory}?page=${page}&per_page=8${searchQuery ? `&search=${searchQuery}` : ''}`;
+    }
 
     try {
-      let courses: Course[] = [];
+      const response = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await response.json();
 
-      if (selectedCategory === 'all') {
-        courses = await fetchAllCourses(`${apiBaseUrl}/api/courses`, token);
-      } else {
-        const url = `${apiBaseUrl}/api/courses/${selectedCategory}`;
-        const response = await fetch(url, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        });
-        const data = await response.json();
+      console.log('API Response:', data);
 
-        if (Array.isArray(data.data)) {
-          courses = data.data;
-        } else if (Array.isArray(data.courses)) {
-          courses = data.courses;
-        } else if (Array.isArray(data)) {
-          courses = data;
-        } else if (data.course) {
-          courses = [data.course];
+      let fetchedCourses: Course[] = [];
+      if (Array.isArray(data.data)) {
+        fetchedCourses = data.data;
+        if (data.meta) {
+          setTotalPages(data.meta.last_page || 1);
+          setCurrentPage(data.meta.current_page || page);
         }
+      } else if (Array.isArray(data.courses)) {
+        fetchedCourses = data.courses;
+      } else if (Array.isArray(data)) {
+        fetchedCourses = data;
+      } else if (data.course) {
+        fetchedCourses = [data.course];
       }
 
-      console.log(`Loaded ${courses.length} courses for category:`, selectedCategory);
-      setCourses(courses);
+      console.log(`Loaded ${fetchedCourses.length} courses for page ${page}, URL: ${url}`);
+      setCourses(fetchedCourses);
     } catch (error) {
       console.error('Error loading courses:', error);
       setCourses([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadCourses();
-  }, [selectedCategory]);
+    setCurrentPage(1);
+    fetchCourses(1);
+  }, [selectedCategory, searchQuery]);
 
-  const filteredCourses = courses.filter(course =>
-    course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (course.description && course.description.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  useEffect(() => {
+    fetchCourses(currentPage);
+  }, [currentPage]);
+
+  const filteredCourses = courses;
 
   const container = {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1
-      }
-    }
+        staggerChildren: 0.1,
+      },
+    },
   };
 
   const item = {
     hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
+    show: { opacity: 1, y: 0 },
   };
 
   return (
@@ -174,21 +154,23 @@ const Courses = () => {
         ) : (
           <div className="flex gap-2 justify-start mb-8 overflow-x-auto pb-4 scrollbar-hide">
             <button
-              className={`px-4 py-2 rounded-xl whitespace-nowrap transition-all ${selectedCategory === 'all'
-                ? 'bg-gradient-primary text-white shadow-lg'
-                : 'bg-white dark:bg-gray-800 text-black dark:text-white border border-gray-200 dark:border-gray-700'
-                }`}
+              className={`px-4 py-2 rounded-xl whitespace-nowrap transition-all ${
+                selectedCategory === 'all'
+                  ? 'bg-gradient-primary text-white shadow-lg'
+                  : 'bg-white dark:bg-gray-800 text-black dark:text-white border border-gray-200 dark:border-gray-700'
+              }`}
               onClick={() => setSelectedCategory('all')}
             >
               الكل
             </button>
-            {categories.map(cat => (
+            {categories.map((cat) => (
               <button
                 key={cat.id}
-                className={`px-4 py-2 rounded-xl whitespace-nowrap transition-all ${selectedCategory === cat.id
-                  ? 'bg-gradient-primary text-white shadow-lg'
-                  : 'bg-white dark:bg-gray-800 text-black dark:text-white border border-gray-200 dark:border-gray-700'
-                  }`}
+                className={`px-4 py-2 rounded-xl whitespace-nowrap transition-all ${
+                  selectedCategory === cat.id
+                    ? 'bg-gradient-primary text-white shadow-lg'
+                    : 'bg-white dark:bg-gray-800 text-black dark:text-white border border-gray-200 dark:border-gray-700'
+                }`}
                 onClick={() => setSelectedCategory(cat.id)}
               >
                 {cat.name}
@@ -199,7 +181,9 @@ const Courses = () => {
 
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[...Array(4)].map((_, i) => <CourseCardSkeleton key={i} />)}
+            {[...Array(4)].map((_, i) => (
+              <CourseCardSkeleton key={i} />
+            ))}
           </div>
         ) : filteredCourses.length === 0 ? (
           <div className="text-center py-16">
@@ -221,79 +205,90 @@ const Courses = () => {
             </button>
           </div>
         ) : (
-          <motion.div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"
-            variants={container}
-            initial="hidden"
-            animate="show"
-          >
-            {filteredCourses.map(course => (
-              <motion.div
-                key={course.id}
-                variants={item}
-                className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-shadow duration-300 cursor-pointer flex flex-col h-full"
-                onClick={() => navigate(`/courses/${course.id}`)}
-                whileHover={{ y: -5 }}
-              >
-                <div className="relative">
-                  {(course.icon || course.image) && (
-                    <img
-                      src={course.icon || course.image}
-                      alt={course.name}
-                      className="w-full h-48 object-cover"
-                    />
-                  )}
-                  <div className="absolute top-2 left-2">
-                    {course.category && (
-                      <span className="bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-md">
-                        {course.category.name}
-                      </span>
+          <>
+            <motion.div
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"
+              variants={container}
+              initial="hidden"
+              animate="show"
+            >
+              {filteredCourses.map((course) => (
+                <motion.div
+                  key={course.id}
+                  variants={item}
+                  className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-shadow duration-300 cursor-pointer flex flex-col h-full"
+                  onClick={() => navigate(`/courses/${course.id}`)}
+                  whileHover={{ y: -5 }}
+                >
+                  <div className="relative">
+                    {(course.icon || course.image) && (
+                      <img
+                        src={course.icon || course.image}
+                        alt={course.name}
+                        className="w-full h-48 object-cover"
+                      />
                     )}
-                  </div>
-                </div>
-
-                <div className="px-4 py-2 flex flex-col flex-1">
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{course.name}</h3>
-
-                  <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300 text-sm mb-4">
-                    <span className="flex items-center gap-1">
-                      <FiUsers /> {course.enroll_count ?? course.Enroll_count ?? 0} طلاب
-                    </span>
-                    <span className="h-1 w-1 bg-gray-400 rounded-full"></span>
-                    <span className="flex items-center gap-1">
-                      <FiBookOpen /> {course.lecture_count ?? course.Lecture_count ?? 0} محاضرة
-                    </span>
-                  </div>
-
-                  <p className="text-gray-600 dark:text-gray-300 text-base mb-5 flex-1 line-clamp-2">
-                    {course.discription || course.description}
-                  </p>
-
-                  <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center gap-2">
-                      {course.userImage && (
-                        <img src={course.userImage} alt={course.user} className="w-8 h-8 rounded-full" />
+                    <div className="absolute top-2 left-2">
+                      {course.category && (
+                        <span className="bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-md">
+                          {course.category.name}
+                        </span>
                       )}
-                      <span className="text-sm text-gray-700 dark:text-gray-300">{course.user || '-'}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-primary font-bold text-lg flex items-center gap-0.5">
-                        {course.salary ? course.salary : 'مجاني'}
-                        {course.salary == 'مجاني' ? '' : <FiDollarSign />}
-                      </span>
-                      <button
-                        className="rounded-xl bg-gradient-primary hover:shadow-glow px-4 py-2 text-white font-medium text-sm transition-all"
-                        onClick={e => { e.stopPropagation(); navigate(`/courses/${course.id}`); }}
-                      >
-                        التفاصيل
-                      </button>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
+
+                  <div className="px-4 py-2 flex flex-col flex-1">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{course.name}</h3>
+
+                    <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300 text-sm mb-4">
+                      <span className="flex items-center gap-1">
+                        <FiUsers /> {course.Enroll_count ?? 0} طلاب
+                      </span>
+                      <span className="h-1 w-1 bg-gray-400 rounded-full"></span>
+                      <span className="flex items-center gap-1">
+                        <FiBookOpen /> {course.Lecture_count ?? 0} محاضرة
+                      </span>
+                    </div>
+
+                    <p className="text-gray-600 dark:text-gray-300 text-base mb-5 flex-1 line-clamp-2">
+                      {course.discription || course.description}
+                    </p>
+
+                    <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100 dark:border-gray-700">
+                      <div className="flex items-center gap-2">
+                        {course.userImage && (
+                          <img src={course.userImage} alt={course.user} className="w-8 h-8 rounded-full" />
+                        )}
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{course.user || ''}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-primary font-bold text-lg flex items-center gap-0.5">
+                          {course.salary ? course.salary : 'مجاني'}
+                          {course.salary === 'مجاني' ? '' : <FiDollarSign />}
+                        </span>
+                        <button
+                          className="rounded-xl bg-gradient-primary hover:shadow-glow px-4 py-2 text-white font-medium text-sm transition-all"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/courses/${course.id}`);
+                          }}
+                        >
+                          التفاصيل
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={(page) => setCurrentPage(page)}
+            />
+          </>
         )}
       </div>
     </div>

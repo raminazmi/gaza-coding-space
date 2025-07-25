@@ -28,7 +28,8 @@ const CourseDetails = () => {
   const [hasAutoShownModal, setHasAutoShownModal] = useState(false);
   const [isPendingVerification, setIsPendingVerification] = useState(false);
   const navigate = useNavigate();
-
+  const [isSharing, setIsSharing] = useState(false);
+  
   useEffect(() => {
     setLoading(true);
     const token = localStorage.getItem('token');
@@ -119,7 +120,6 @@ const CourseDetails = () => {
         if (data.message) {
           setShowVerificationModal(true);
           setIsPendingVerification(true);
-          console.log('Enrollment initiated:', data.message);
         } else {
           throw new Error('فشل في بدء عملية التسجيل');
         }
@@ -133,7 +133,6 @@ const CourseDetails = () => {
   const handleVerificationSuccess = () => {
     setShowVerificationModal(false);
     setIsPendingVerification(false);
-    // Refresh enrollment status
     fetch(`${apiBaseUrl}/api/check-enroll/${courseId}`, {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
     })
@@ -144,8 +143,6 @@ const CourseDetails = () => {
         }
       });
   };
-
-
 
   function cleanMediaUrl(url: string) {
     if (!url) return '';
@@ -171,7 +168,6 @@ const CourseDetails = () => {
   };
 
   const renderEnrollButton = () => {
-    // Show pending verification button if either enrollStatus is pending OR isPendingVerification is true
     if ((enrollStatus && enrollStatus.status === 'pending') || isPendingVerification) {
       return (
         <button
@@ -223,7 +219,6 @@ const CourseDetails = () => {
     return match ? parseInt(match[1], 10) : 0;
   }
 
-
   function timeAgo(dateString: string) {
     if (!dateString) return '';
     const now = new Date();
@@ -241,10 +236,37 @@ const CourseDetails = () => {
   const courseImage = course?.image ? cleanMediaUrl(course.image) : defaultCourseImage;
   const headerBg = useDominantColorBackground(courseImage);
 
+const handleShare = async () => {
+    if (!course || !courseId || isSharing) return; // منع التنفيذ إذا كان المشاركة جارية
+    setIsSharing(true);
+    const shareUrl = `${window.location.origin}/courses/${courseId}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'كورس مذهل',
+          text: `تحقق من هذا الكورس المذهل: ${course.discription} - ${shareUrl}`,
+          url: shareUrl,
+        });
+        console.log('Course shared successfully');
+      } else {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          alert('تم نسخ رابط الكورس إلى الحافظة!');
+        }).catch(err => {
+          console.error('Failed to copy:', err);
+        });
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+      if (error instanceof Error && error.message.includes('InvalidStateError')) {
+        alert('من فضلك، انتظر حتى تكتمل العملية السابقة قبل المحاولة مجددًا.');
+      }
+    } finally {
+      setIsSharing(false); // إعادة تفعيل الزر بعد انتهاء العملية
+    }
+  };
+
   if (loading) {
-    return (
-      <CourseDetailsSkeleton />
-    );
+    return <CourseDetailsSkeleton />;
   }
 
   if (!course) {
@@ -351,12 +373,9 @@ const CourseDetails = () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="container max-w-6xl mx-auto px-4 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Main Content */}
           <main className="lg:w-2/3 w-full space-y-8">
-            {/* Course Tabs */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
               <div className="flex border-b border-gray-200 dark:border-gray-700">
                 <button
@@ -397,10 +416,8 @@ const CourseDetails = () => {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {/* Show limited content if not enrolled or pending */}
                         {(!enrollStatus || enrollStatus.status === 'pending') && course.salary !== 'مجاني' ? (
                           <>
-                            {/* Show only first chapter with max 2 lectures */}
                             {chapters.slice(0, 1).map((chapter: any, idx) => (
                               <div key={chapter.id} className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
                                 <button
@@ -425,7 +442,6 @@ const CourseDetails = () => {
                                   className={`transition-all duration-300 overflow-hidden ${expanded === String(chapter.id) ? 'max-h-screen' : 'max-h-0'}`}
                                 >
                                   <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                                    {/* Show only first 2 lectures */}
                                     {chapter.lectures?.slice(0, 2).map((lec: any, index: number) => (
                                       <li
                                         key={lec.id}
@@ -448,8 +464,7 @@ const CourseDetails = () => {
                                         </div>
                                       </li>
                                     ))}
-                                    
-                                    {/* Show enrollment message for remaining lectures */}
+
                                     {chapter.lectures?.length > 2 && (
                                       <li className="px-5 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
                                         <div className="text-center">
@@ -467,8 +482,7 @@ const CourseDetails = () => {
                                 </div>
                               </div>
                             ))}
-                            
-                            {/* Show message for remaining chapters */}
+
                             {chapters.length > 1 && (
                               <div className="border border-blue-200 dark:border-blue-800 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-6 text-center">
                                 <FiLock className="mx-auto text-3xl text-blue-600 dark:text-blue-400 mb-3" />
@@ -494,78 +508,77 @@ const CourseDetails = () => {
                             )}
                           </>
                         ) : (
-                          /* Show full content for enrolled users */
                           chapters.map((chapter: any, idx) => (
-                          <div key={chapter.id} className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-                            <button
-                              className="w-full flex justify-between items-center px-5 py-4 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-gray-700 dark:text-gray-100 transition-all"
-                              onClick={() => setExpanded(expanded === String(chapter.id) ? null : String(chapter.id))}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 flex items-center justify-center">
-                                  {idx + 1}
+                            <div key={chapter.id} className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                              <button
+                                className="w-full flex justify-between items-center px-5 py-4 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-gray-700 dark:text-gray-100 transition-all"
+                                onClick={() => setExpanded(expanded === String(chapter.id) ? null : String(chapter.id))}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 flex items-center justify-center">
+                                    {idx + 1}
+                                  </div>
+                                  <span>{chapter.name}</span>
                                 </div>
-                                <span>{chapter.name}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-gray-500 dark:text-gray-300">
-                                  {chapter.lectures && chapter.lectures.length > 0
-                                    ? `${chapter.lectures.reduce((sum, lec) => sum + parseMinutes(lec.timeLecture), 0)} دقيقة`
-                                    : ''}
-                                </span>
-                                {expanded === String(chapter.id) ? <FiChevronUp /> : <FiChevronDown />}
-                              </div>
-                            </button>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm text-gray-500 dark:text-gray-300">
+                                    {chapter.lectures && chapter.lectures.length > 0
+                                      ? `${chapter.lectures.reduce((sum, lec) => sum + parseMinutes(lec.timeLecture), 0)} دقيقة`
+                                      : ''}
+                                  </span>
+                                  {expanded === String(chapter.id) ? <FiChevronUp /> : <FiChevronDown />}
+                                </div>
+                              </button>
 
-                            <div
-                              className={`transition-all duration-300 overflow-hidden ${expanded === String(chapter.id) ? 'max-h-screen' : 'max-h-0'}`}
-                            >
-                              <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                                {chapter.lectures?.length === 0 && (
-                                  <li className="text-center py-4 text-gray-500 dark:text-gray-300 text-sm">
-                                    لا يوجد محاضرات في هذا الفصل
-                                  </li>
-                                )}
-                                {chapter.lectures?.map((lec: any, index: number) => (
-                                  <li
-                                    key={lec.id}
-                                    className={`flex items-center justify-between px-5 py-3 cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-gray-800 ${lec.is_watch ? 'bg-green-50 dark:bg-green-900/30' : ''}`}
-                                    onClick={() => {
-                                      if (!enrollStatus && course.salary !== 'مجاني') {
-                                        return;
-                                      }
-                                      navigate(`/courses/${courseId}/lecture/${lec.id}`);
-                                    }}
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-6 h-6 flex items-center justify-center">
-                                        {renderLectureIcon(lec.type)}
+                              <div
+                                className={`transition-all duration-300 overflow-hidden ${expanded === String(chapter.id) ? 'max-h-screen' : 'max-h-0'}`}
+                              >
+                                <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                                  {chapter.lectures?.length === 0 && (
+                                    <li className="text-center py-4 text-gray-500 dark:text-gray-300 text-sm">
+                                      لا يوجد محاضرات في هذا الفصل
+                                    </li>
+                                  )}
+                                  {chapter.lectures?.map((lec: any, index: number) => (
+                                    <li
+                                      key={lec.id}
+                                      className={`flex items-center justify-between px-5 py-3 cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-gray-800 ${lec.is_watch ? 'bg-green-50 dark:bg-green-900/30' : ''}`}
+                                      onClick={() => {
+                                        if (!enrollStatus && course.salary !== 'مجاني') {
+                                          return;
+                                        }
+                                        navigate(`/courses/${courseId}/lecture/${lec.id}`);
+                                      }}
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-6 h-6 flex items-center justify-center">
+                                          {renderLectureIcon(lec.type)}
+                                        </div>
+                                        <span className={`text-sm ${!enrollStatus && course.salary !== 'مجاني' ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-100'}`}>
+                                          {index + 1}. {lec.name}
+                                          {lec.is_watch && (
+                                            <span className="mr-2 text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-300 px-2 py-0.5 rounded-full">
+                                              تمت المشاهدة
+                                            </span>
+                                          )}
+                                        </span>
                                       </div>
-                                      <span className={`text-sm ${!enrollStatus && course.salary !== 'مجاني' ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-100'}`}>
-                                        {index + 1}. {lec.name}
-                                        {lec.is_watch && (
-                                          <span className="mr-2 text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-300 px-2 py-0.5 rounded-full">
-                                            تمت المشاهدة
-                                          </span>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-500 dark:text-gray-300">
+                                          {lec.timeLecture || '00:00'}
+                                        </span>
+                                        {!enrollStatus && course.salary !== 'مجاني' ? (
+                                          <FiLock className="text-gray-400 dark:text-gray-500" />
+                                        ) : (
+                                          <FiPlay className="text-blue-500" />
                                         )}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs text-gray-500 dark:text-gray-300">
-                                        {lec.timeLecture || '00:00'}
-                                      </span>
-                                      {!enrollStatus && course.salary !== 'مجاني' ? (
-                                        <FiLock className="text-gray-400 dark:text-gray-500" />
-                                      ) : (
-                                        <FiPlay className="text-blue-500" />
-                                      )}
-                                    </div>
-                                  </li>
-                                ))}
-                              </ul>
+                                      </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
                             </div>
-                          </div>
-                        ))
+                          ))
                         )}
                       </div>
                     )}
@@ -581,11 +594,11 @@ const CourseDetails = () => {
 
                     <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-8 mb-4">ما ستتعلمه</h3>
                     <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {course.learnings?.length > 0 ? (
-                        course.learnings.map((item: string, index: number) => (
-                          <li key={index} className="flex items-start gap-2">
+                      {course.features && course.features.length > 0 ? (
+                        course.features.map((feature: { name: string; id: number }, index: number) => (
+                          <li key={feature.id || index} className="flex items-start gap-2">
                             <BsPatchCheck className="text-green-500 mt-1" />
-                            <span>{item}</span>
+                            <span>{feature.name}</span>
                           </li>
                         ))
                       ) : (
@@ -656,7 +669,6 @@ const CourseDetails = () => {
               </div>
             </div>
 
-            {/* Instructor Section */}
             {course.teacher && (
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
                 <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-6">عن المدرب</h3>
@@ -711,9 +723,7 @@ const CourseDetails = () => {
             )}
           </main>
 
-          {/* Sidebar */}
           <aside className="w-full md:w-1/3 lg:w-1/4 bg-white dark:bg-gray-800 p-3 md:p-4 rounded-2xl shadow-xl mb-4 md:mb-0 md:sticky md:top-20 max-h-fit overflow-y-auto">
-            {/* Course Card */}
             <div className="overflow-hidden">
               <div className="border-b border-gray-200 dark:border-gray-700">
                 <div className="flex justify-between items-center mb-4">
@@ -725,7 +735,12 @@ const CourseDetails = () => {
 
                 {renderEnrollButton()}
 
-                <button className="w-full mt-3 border border-blue-500 text-blue-500 py-2 md:py-3 rounded-lg font-bold hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors flex items-center justify-center gap-2 text-sm md:text-base" title="مشاركة الكورس">
+                <button
+                  onClick={handleShare}
+                  disabled={isSharing}
+                  className="w-full mt-3 border border-blue-500 text-blue-500 py-2 md:py-3 rounded-lg font-bold hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors flex items-center justify-center gap-2 text-sm md:text-base"
+                  title="مشاركة الكورس"
+                >
                   <FiShare2 /> مشاركة الكورس
                 </button>
               </div>
@@ -786,7 +801,6 @@ const CourseDetails = () => {
               )}
             </div>
 
-            {/* Certificate Info */}
             {course.certificate && (
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-3 md:p-6 mt-4">
                 <div className="flex items-start gap-3">
@@ -803,7 +817,6 @@ const CourseDetails = () => {
               </div>
             )}
 
-            {/* Enrollment Status */}
             {enrollStatus && (
               <div className="rounded-md shadow p-2 md:p-3 mt-4 bg-white dark:bg-gray-800">
                 <div className="flex items-start gap-3">
@@ -828,14 +841,13 @@ const CourseDetails = () => {
         </div>
       </div>
 
-      {/* Course Enrollment Verification Modal */}
       <CourseEnrollVerificationModal
         isOpen={showVerificationModal}
         onClose={() => setShowVerificationModal(false)}
         courseId={courseId!}
         onSuccess={handleVerificationSuccess}
       />
-    </div >
+    </div>
   );
 };
 

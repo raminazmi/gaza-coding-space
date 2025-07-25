@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { apiBaseUrl } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,7 +40,7 @@ const Notifications = () => {
   };
 
   useEffect(() => {
-    // جعل كل الإشعارات مقروءة عند فتح الصفحة
+    // Mark all notifications as read on page load
     const token = localStorage.getItem('token');
     fetch(`${apiBaseUrl}/api/notifications/read_at`, {
       method: 'PUT',
@@ -88,4 +88,4 @@ const Notifications = () => {
   );
 };
 
-export default Notifications; 
+export default Notifications;

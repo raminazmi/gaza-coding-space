@@ -5,9 +5,15 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import Loading from '@/components/ui/Loading';
 import { Input } from '@/components/ui/input';
-import { FiSend, FiPaperclip } from 'react-icons/fi';
 import { usePusher } from '@/context/PusherContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  FiSend,
+  FiPaperclip,
+  FiBook,
+  FiBookOpen,
+  FiWifi
+} from 'react-icons/fi';
 
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
@@ -86,6 +92,18 @@ type Conversation = {
   course_id?: number;
   lecture?: string;
   course?: string;
+  discussion: Discussion;
+};
+
+type Discussion = {
+  id: number;
+  course_id: number;
+  user_id: number;
+  description: string;
+  image: string | null;
+  created_at: string;
+  updated_at: string;
+  lecture_id: number;
 };
 
 const Messenger = () => {
@@ -146,6 +164,16 @@ const Messenger = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (selectedConv?.discussion?.lecture_id && selectedConv?.discussion?.course_id) {
+      fetchLectureDetails(
+        selectedConv.discussion.lecture_id,
+        selectedConv.discussion.course_id
+      );
+      fetchCourseDetails(selectedConv.discussion.course_id);
+    }
+  }, [selectedConv]);
+
   const fetchAuthUser = async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -160,7 +188,7 @@ const Messenger = () => {
   };
 
   const fetchCourseDetails = async (courseId: number) => {
-    if (courseCache[courseId]) return;
+    if (!courseId) return;
     const token = localStorage.getItem('token');
     try {
       const res = await fetch(`${apiBaseUrl}/api/course-details/${courseId}`, {
@@ -168,21 +196,27 @@ const Messenger = () => {
       });
       if (res.ok) {
         const data = await res.json();
-        setCourseCache((prev) => ({ ...prev, [courseId]: data.course.name }));
+        setCourseCache(prev => ({
+          ...prev,
+          [courseId]: data.course?.name || `الدورة ${courseId}`
+        }));
       }
     } catch (e) { }
   };
 
-  const fetchLectureDetails = async (lectureId: number, CourseId: number) => {
-    if (lectureCache[lectureId]) return;
+  const fetchLectureDetails = async (lectureId: number, courseId: number) => {
+    if (!lectureId || !courseId) return;
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${apiBaseUrl}/api/showLecture/${CourseId}/${lectureId}`, {
+      const res = await fetch(`${apiBaseUrl}/api/showLecture/${courseId}/${lectureId}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {
         const data = await res.json();
-        setLectureCache((prev) => ({ ...prev, [lectureId]: data.lecture.name }));
+        setLectureCache(prev => ({
+          ...prev,
+          [lectureId]: data.lecture?.name || `المحاضرة ${lectureId}`
+        }));
       }
     } catch (e) { }
   };
@@ -196,18 +230,33 @@ const Messenger = () => {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await res.json();
-      const newConvs = Array.isArray(data.data) ? data.data : data;
-      const updatedConvs = await Promise.all(
-        newConvs.map(async (conv: any) => {
-          if (conv.lecture_id) await fetchLectureDetails(conv.lecture_id, conv.course_id);
-          if (conv.course_id) await fetchCourseDetails(conv.course_id);
-          return {
-            ...conv,
-            lecture: lectureCache[conv.lecture_id] || 'غير محددة',
-            course: courseCache[conv.course_id] || 'غير محددة',
-          };
+
+      // استخراج قائمة المحادثات من البيانات
+      const conversationsList = Array.isArray(data.data) ? data.data : data;
+
+      // تحديث الكاشات للمحاضرات والدورات
+      await Promise.all(
+        conversationsList.map(async (conv: any) => {
+          if (conv.discussion?.lecture_id) {
+            await fetchLectureDetails(conv.discussion.lecture_id, conv.discussion.course_id);
+          }
+          if (conv.discussion?.course_id) {
+            await fetchCourseDetails(conv.discussion.course_id);
+          }
         })
       );
+
+      // إنشاء المحادثات المحدثة مع أسماء المحاضرة والدورة
+      const updatedConvs = conversationsList.map((conv: any) => {
+        const lectureId = conv.discussion?.lecture_id;
+        const courseId = conv.discussion?.course_id;
+        return {
+          ...conv,
+          lecture: lectureId ? lectureCache[lectureId] || `المحاضرة ${lectureId}` : 'غير محددة',
+          course: courseId ? courseCache[courseId] || `الدورة ${courseId}` : 'غير محددة',
+        };
+      });
+
       setConversations((prev) => (page === 1 ? updatedConvs : [...prev, ...updatedConvs]));
       const total = updatedConvs.reduce((sum, conv) => sum + (conv.new_messages || 0), 0);
       setTotalNewMessages(total);
@@ -690,19 +739,41 @@ const Messenger = () => {
                       {other?.isOnline && <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-bold text-gray-800 dark:text-gray-100 text-base truncate">{other?.name || 'مستخدم'}</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-300 truncate">
-                        {conv.last_message?.file_name ? (
-                          <span className="flex items-center gap-1">
-                            <FiPaperclip /> {conv.last_message.file_name}
-                          </span>
-                        ) : typeof conv.last_message?.body === 'string'
-                          ? conv.last_message.body
-                          : 'ملف مرفق'}
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="font-bold text-gray-800 dark:text-gray-100 text-base truncate">
+                          {other?.name || 'مستخدم'}
+                        </div>
+                        {other?.isOnline && (
+                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                        )}
                       </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400 flex flex-col">
-                        <span className="font-semibold">المحاضرة: {conv.lecture || 'غير محددة'}</span>
-                        <span className="font-medium italic">الدورة: {conv.course || 'غير محددة'}</span>
+
+                      <div className="text-sm text-gray-500 dark:text-gray-300 truncate flex items-center gap-1">
+                        {conv.last_message?.file_name ? (
+                          <>
+                            <FiPaperclip className="flex-shrink-0" />
+                            <span>{conv.last_message.file_name}</span>
+                          </>
+                        ) : typeof conv.last_message?.body === 'string' ? (
+                          conv.last_message.body
+                        ) : (
+                          'ملف مرفق'
+                        )}
+                      </div>
+
+                      <div className="text-xs text-gray-600 dark:text-gray-400 flex flex-col mt-1">
+                        <div className="flex items-center gap-1">
+                          <FiBookOpen className="text-blue-500" size={12} />
+                          <span className="font-semibold">
+                            المحاضرة: {conv.lecture || 'غير محددة'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <FiBook className="text-purple-500" size={12} />
+                          <span className="font-medium italic">
+                            الدورة: {conv.course || 'غير محددة'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1 min-w-[70px]">
@@ -719,7 +790,7 @@ const Messenger = () => {
         </div>
         {selectedConv && (!isMobile || !showSidebar) && (
           <div className={`w-full h-full md:h-[85vh] shadow-lg rounded-none md:rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col relative transition-all duration-300 ${isMobile ? 'fixed inset-0 z-10' : 'relative'}`}>
-            <div className="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 md:rounded-t-2xl py-3 px-4 flex items-center">
+            <div className="w-full sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 md:rounded-t-2xl py-3 px-4 flex items-center">
               {isMobile && (
                 <button
                   className="text-gray-700 dark:text-gray-200 rounded-full w-6 h-6 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -734,20 +805,35 @@ const Messenger = () => {
                   </svg>
                 </button>
               )}
-              <div className="flex items-center gap-3 ps-2">
-                <div className="relative">
-                  <Avatar>
-                    <AvatarImage src={getOtherParticipant(selectedConv)?.profile_photo_url} alt={getOtherParticipant(selectedConv)?.name} />
-                  </Avatar>
-                  {getOtherParticipant(selectedConv)?.isOnline && <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>}
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-gray-800 dark:text-gray-100 text-base">{getOtherParticipant(selectedConv)?.name || 'مستخدم'}</h3>
-                  <div className="text-xs text-gray-400">
-                    {getOtherParticipant(selectedConv)?.isOnline ? 'متصل الآن' : selectedConv.last_message?.created_date || selectedConv.updated_date || ''}
+              <div className="flex justify-between items-center gap-2 ">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-gray-800 dark:text-gray-100 text-base">
+                      {getOtherParticipant(selectedConv)?.name || 'مستخدم'}
+                    </h3>
+                    {getOtherParticipant(selectedConv)?.isOnline && (
+                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                    )}
                   </div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400 flex flex-col">
+
+                  <div className="text-xs text-gray-400 flex items-center gap-1">
+                    {getOtherParticipant(selectedConv)?.isOnline ? (
+                      <>
+                        <FiWifi className="text-green-500" />
+                        <span>متصل الآن</span>
+                      </>
+                    ) : (
+                      selectedConv.last_message?.created_date || selectedConv.updated_date || ''
+                    )}
+                  </div>
+                </div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 flex flex-col mt-1">
+                  <div className="flex items-center gap-1">
+                    <FiBookOpen className="text-blue-500" size={12} />
                     <span className="font-semibold">المحاضرة: {selectedConv.lecture || 'غير محددة'}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <FiBook className="text-purple-500" size={12} />
                     <span className="font-medium italic">الدورة: {selectedConv.course || 'غير محددة'}</span>
                   </div>
                 </div>

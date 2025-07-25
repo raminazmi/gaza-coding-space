@@ -1,14 +1,11 @@
-// Import the functions you need from the SDKs you need
+// firebase.ts
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import axios from 'axios';
-
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { apiBaseUrl } from "./lib/utils";
 
 // Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
     apiKey: "AIzaSyDmfyHHxvOeoy0pi3hNPD4N61EFCFQHCpk",
     authDomain: "gazacoding-8d421.firebaseapp.com",
@@ -22,31 +19,33 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
-
 const messaging = getMessaging(app);
-export { messaging, getToken, onMessage };
-getToken(messaging, { vapidKey: 'BCNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7iS70wV68ipFAkmjUTZmaAEdyE3B0whxZIAcAyjOQ' }).then((currentToken) => {
-    if (currentToken) {
-        const userToken = localStorage.getItem('token');
-        axios.post('https://gazacodingspace.mahmoudalbatran.com/api/device-tokens', {
-                token: currentToken,
-            device_name: window.navigator.userAgent
-            },
-            {
-                headers: userToken ? { Authorization: `Bearer ${userToken}` } : {}
-        });
-    } else {
-        // Show permission request UI
-        console.log('No registration token available. Request permission to generate one.');
-        // ...
-    }
-}).catch((err) => {
-    console.log('An error occurred while retrieving token. ', err);
-    // ...
-});
 
+export { messaging, getToken, onMessage };
+
+// Request token and register with backend
+getToken(messaging, { vapidKey: 'BCNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7iS70wV68ipFAkmjUTZmaAEdyE3B0whxZIAcAyjOQ' })
+    .then((currentToken) => {
+        if (currentToken) {
+            const userToken = localStorage.getItem('token');
+            axios.post(`${apiBaseUrl}/api/device-tokens`, {
+                token: currentToken,
+                device_name: window.navigator.userAgent
+            }, {
+                headers: userToken ? { Authorization: `Bearer ${userToken}` } : {}
+            }).catch((err) => {
+                console.error('Error registering token:', err);
+            });
+        } else {
+            console.log('No registration token available. Request permission to generate one.');
+        }
+    })
+    .catch((err) => {
+        console.error('An error occurred while retrieving token:', err);
+    });
+
+// Handle foreground messages
 onMessage(messaging, (payload) => {
-    console.log("Message received. ", payload);
-    // ...
-    alert(payload.data)
+    console.log('Message received:', payload);
+    alert(payload.notification?.body || 'New message received!');
 });

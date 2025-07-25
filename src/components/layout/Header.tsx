@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '@/hooks';
 import { toggleTheme } from '@/store/slices/themeSlice';
-import { FiUser, FiMoon, FiSun, FiMessageCircle, FiBell } from 'react-icons/fi';
 import { logout, fetchUser } from '@/store/slices/userSlice';
 import {
   DropdownMenu,
@@ -19,10 +18,15 @@ import {
   BreadcrumbSeparator
 } from '@/components/ui/breadcrumb';
 import React from 'react';
-import { messaging, getToken } from '../../firebase';
-import { usePusher } from '@/context/PusherContext';
-import { disconnectEcho } from '@/lib/echo';
+import { messaging, getToken, onMessage } from '../../firebase';
 import { apiBaseUrl } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
+import { toast } from '@/components/ui/sonner';
+import { FiUser, FiMoon, FiSun, FiMessageCircle, FiBell } from 'react-icons/fi';
+
+interface ExternalToast {
+  action?: { label: string; onClick: () => void };
+}
 
 const Header = () => {
   const dispatch = useAppDispatch();
@@ -31,7 +35,9 @@ const Header = () => {
   const isAuthenticated = useAppSelector((state) => state.user.isAuthenticated);
   const location = useLocation();
   const pathnames = location.pathname.split('/').filter(Boolean);
-  const { totalNewMessages } = usePusher();
+  const navigate = useNavigate();
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
   const breadcrumbItems = React.useMemo(() => {
     if (pathnames[0] === 'order-service') {
       return [
@@ -42,40 +48,29 @@ const Header = () => {
     }
     return [
       { to: '/', label: 'الرئيسية' },
-      ...pathnames.filter((segment, idx) => {
-        if (pathnames[0] === 'courses' && segment === 'lecture' && idx === 2) {
-          return false;
-        }
-        return true;
-      }).map((segment, idx, filteredPathnames) => {
-        const originalIdx = pathnames.indexOf(segment, idx > 0 ? pathnames.indexOf(filteredPathnames[idx - 1]) + 1 : 0);
-        const to = '/' + pathnames.slice(0, originalIdx + 1).join('/');
-        let label = decodeURIComponent(segment);
-        if (pathnames[0] === 'courses' && originalIdx === 1) {
-          label = localStorage.getItem('breadcrumb_course_name') || label;
-        }
-        if (pathnames[0] === 'courses' && pathnames[2] === 'lecture' && originalIdx === 3) {
-          label = localStorage.getItem('breadcrumb_lecture_name') || label;
-        }
-        if (pathnames[0] === 'articles' && originalIdx === 1) {
-          label = localStorage.getItem('breadcrumb_article_title') || label;
-        }
-        if (pathnames[0] === 'order-service' && originalIdx === 1) {
-          label = localStorage.getItem('breadcrumb_service_name') || label;
-        }
-        if (label === 'courses') label = 'الدورات';
-        if (label === 'profile') label = 'الملف الشخصي';
-        if (label === 'notifications') label = 'الإشعارات';
-        if (label === 'articles') label = 'المقالات';
-        if (label === 'services') label = 'الخدمات';
-        if (label === 'portfolio') label = 'أعمالنا';
-        if (label === 'contact') label = 'تواصل معنا';
-        if (label === 'chat') label = 'الدردشة';
-        if (label === 'order-service') label = 'طلب خدمة';
-        return { to, label };
-      })
+      ...pathnames.filter((segment, idx) => !(pathnames[0] === 'courses' && segment === 'lecture' && idx === 2))
+        .map((segment, idx, filteredPathnames) => {
+          const originalIdx = pathnames.indexOf(segment, idx > 0 ? pathnames.indexOf(filteredPathnames[idx - 1]) + 1 : 0);
+          const to = '/' + pathnames.slice(0, originalIdx + 1).join('/');
+          let label = decodeURIComponent(segment);
+          if (pathnames[0] === 'courses' && originalIdx === 1) label = localStorage.getItem('breadcrumb_course_name') || label;
+          if (pathnames[0] === 'courses' && pathnames[2] === 'lecture' && originalIdx === 3) label = localStorage.getItem('breadcrumb_lecture_name') || label;
+          if (pathnames[0] === 'articles' && originalIdx === 1) label = localStorage.getItem('breadcrumb_article_title') || label;
+          if (pathnames[0] === 'order-service' && originalIdx === 1) label = localStorage.getItem('breadcrumb_service_name') || label;
+          if (label === 'courses') label = 'الدورات';
+          if (label === 'profile') label = 'الملف الشخصي';
+          if (label === 'notifications') label = 'الإشعارات';
+          if (label === 'articles') label = 'المقالات';
+          if (label === 'services') label = 'الخدمات';
+          if (label === 'portfolio') label = 'أعمالنا';
+          if (label === 'contact') label = 'تواصل معنا';
+          if (label === 'chat') label = 'الدردشة';
+          if (label === 'order-service') label = 'طلب خدمة';
+          return { to, label };
+        })
     ];
   }, [location.pathname, pathnames]);
+
   const navLinks = [
     { to: '/', label: 'الرئيسية' },
     { to: '/courses', label: 'الدورات' },
@@ -85,21 +80,10 @@ const Header = () => {
     { to: '/contact', label: 'تواصل معنا' },
   ];
 
-  const handleThemeToggle = () => {
-    dispatch(toggleTheme());
-  };
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      dispatch(fetchUser());
-    }
-  }, [dispatch]);
-
+  const handleThemeToggle = () => dispatch(toggleTheme());
   const handleLogout = () => {
     localStorage.removeItem('token');
     dispatch(logout());
-    disconnectEcho(); // فصل الاتصال عند تسجيل الخروج
     window.location.reload();
   };
 
@@ -109,48 +93,41 @@ const Header = () => {
   const [notifLoading, setNotifLoading] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      const token = localStorage.getItem('token');
-      const fetchNotificationsData = () => {
-        fetch(`${apiBaseUrl}/api/notifications/count`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        })
-          .then(res => res.json())
-          .then(count => setNotifCount(count))
-          .catch(() => setNotifCount(0));
-        fetch(`${apiBaseUrl}/api/notifications?page=1`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        })
-          .then(res => res.json())
-          .then(data => setNotifications(data.notifications?.data?.slice(0, 5) || []))
-          .catch(() => setNotifications([]));
-      };
-      fetchNotificationsData();
-      const interval = setInterval(fetchNotificationsData, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [isAuthenticated]);
+    const token = localStorage.getItem('token');
+    if (token) dispatch(fetchUser());
+  }, [dispatch]);
 
   useEffect(() => {
-    if (isAuthenticated && Notification.permission === 'granted') {
-      (async () => {
-        const registration = await navigator.serviceWorker.ready;
-        getToken(messaging, { vapidKey: 'CNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7iS70wV68ipFAkmjUTZmaAEdyE3B0whxZIAcAyjOQebase', serviceWorkerRegistration: registration })
-          .then((currentToken) => {
-            if (currentToken) {
-              const token = localStorage.getItem('token');
-              const formData = new FormData();
-              formData.append('token', currentToken);
-              fetch(`${apiBaseUrl}/api/device-tokens`, {
-                method: 'POST',
-                headers: token ? { Authorization: `Bearer ${token}` } : {},
-                body: formData,
-              });
-            }
-          });
-      })();
+    if (isAuthenticated && 'Notification' in window && Notification.permission === 'granted') {
+      getToken(messaging, { vapidKey: 'BCNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7iS70wV68ipFAkmjUTZmaAEdyE3B0whxZIAcAyjOQ' })
+        .then((currentToken) => {
+          if (currentToken) {
+            const userToken = localStorage.getItem('token');
+            const formData = new FormData();
+            formData.append('token', currentToken);
+            fetch(`${apiBaseUrl}/api/device-tokens`, {
+              method: 'POST',
+              headers: userToken ? { Authorization: `Bearer ${userToken}` } : {},
+              body: formData,
+            });
+          }
+        })
+        .catch((err) => console.error('Error retrieving token:', err));
+
+      const unsubscribe = onMessage(messaging, (payload) => {
+        console.log('Message received:', payload);
+        toast(
+          `${payload.notification?.title ? payload.notification.title + ': ' : ''}${payload.notification?.body || 'لديك رسالة جديدة'}`,
+          {
+            action: { label: 'عرض', onClick: () => navigate('/chat') },
+          }
+        );
+        setUnreadMessages((prev) => prev + 1);
+      });
+
+      return () => unsubscribe && unsubscribe();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, navigate]);
 
   const handleNotifOpen = (open: boolean) => {
     setNotifOpen(open);
@@ -163,6 +140,41 @@ const Header = () => {
     }
   };
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      const token = localStorage.getItem('token');
+      const fetchNotificationsData = () => {
+        fetch(`${apiBaseUrl}/api/notifications/count`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+          .then((res) => res.json())
+          .then((count) => setNotifCount(count))
+          .catch(() => setNotifCount(0));
+        fetch(`${apiBaseUrl}/api/notifications?page=1`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+          .then((res) => res.json())
+          .then((data) => setNotifications(data.notifications?.data?.slice(0, 5) || []))
+          .catch(() => setNotifications([]));
+      };
+      fetchNotificationsData();
+      const interval = setInterval(fetchNotificationsData, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated]);
+
+  const handleChatClick = () => {
+    if (unreadMessages > 0) {
+      setUnreadMessages(0);
+      const token = localStorage.getItem('token');
+      fetch(`${apiBaseUrl}/api/messages/mark-all-read`, {
+        method: 'PUT',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      }).catch((error) => console.error('Error marking messages as read:', error));
+    }
+    navigate('/chat');
+  };
+
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl shadow-lg supports-[backdrop-filter]:bg-white/40 dark:supports-[backdrop-filter]:bg-gray-900/40 transition-all overflow-hidden" dir="rtl">
@@ -170,11 +182,11 @@ const Header = () => {
           <div className="container flex h-16 items-center justify-between px-2 md:px-6">
             <a href="/" className="flex items-center gap-2 flex-row mx-0">
               <span className="inline-flex items-center justify-center rounded-lg bg-gradient-to-tr from-blue-500 to-purple-500 shadow-md ring-2 ring-blue-400/40 ring-offset-2 ring-offset-white dark:ring-offset-gray-900 transition-all animate-glow">
-                <img src="/assests/tebusoft.jpg" alt="TEBU SOFT" className="rounded-lg object-cover h-8 w-8 md:h-10 md:w-10 drop-shadow-glow" />
+                <img src="/assests/art_tebu.jpg" alt="TEBU SOFT" className="rounded-lg object-cover h-8 w-8 md:h-10 md:w-10 drop-shadow-glow" />
               </span>
               <span className="font-extrabold text-lg md:text-xl tracking-tight drop-shadow-sm">
-                <span className="text-[#041665] dark:text-blue-200">TEBU</span>
-                <span className="text-blue-400/40 dark:text-purple-300/60 mx-1">SOFT</span>
+                <span className="text-[#041665] dark:text-blue-200">ART</span>
+                <span className="bg-gradient-primary bg-clip-text text-transparent drop-shadow-glow">TEBU</span>
               </span>
             </a>
 
@@ -201,15 +213,16 @@ const Header = () => {
             <div className="flex items-center gap-2 flex-row">
               <Link
                 to="/chat"
+                onClick={handleChatClick}
                 className={`relative flex items-center justify-center rounded-full p-2 transition-colors hover:bg-blue-100/60 dark:hover:bg-blue-900/40 ${location.pathname.startsWith('/chat') ? 'bg-blue-100/80 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200' : 'text-blue-700 dark:text-gray-100'}`}
                 title="الدردشة"
               >
                 <FiMessageCircle className="h-6 w-6" />
-                {totalNewMessages > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold animate-pulse">{totalNewMessages}</span>
+                {unreadMessages > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold animate-pulse">{unreadMessages}</span>
                 )}
               </Link>
-              <DropdownMenu>
+              <DropdownMenu open={notifOpen} onOpenChange={handleNotifOpen}>
                 <DropdownMenuTrigger asChild>
                   <button
                     className={`relative rounded-full p-2 transition-colors hover:bg-blue-100/60 dark:hover:bg-blue-900/40 ${notifOpen ? 'bg-blue-100/80 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200' : 'text-blue-700 dark:text-gray-100'}`}
@@ -246,7 +259,17 @@ const Header = () => {
                     </ul>
                   )}
                   <div className="mt-2 text-center">
-                    <Link to="/notifications" className="text-blue-600 hover:underline font-bold">عرض المزيد</Link>
+                    <Link
+                      to="/notifications"
+                      className="text-blue-600 hover:underline font-bold"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleNotifOpen(false);
+                        setTimeout(() => navigate('/notifications'), 100);
+                      }}
+                    >
+                      عرض المزيد
+                    </Link>
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -258,11 +281,7 @@ const Header = () => {
                         <div className="flex items-center gap-2 cursor-pointer bg-white dark:bg-gray-900 text-blue-700 dark:text-blue-200 font-semibold text-base rounded-xl px-1.5 py-1 shadow border border-blue-100 dark:border-blue-900 max-w-[160px] truncate transition-colors">
                           <span className="flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 w-7 h-7 overflow-hidden">
                             {user.profile_photo_path || user.profile_photo_url ? (
-                              <img
-                                src={user.profile_photo_url || user.profile_photo_path}
-                                alt={user.name || 'مستخدم'}
-                                className="w-7 h-7 rounded-full object-cover"
-                              />
+                              <img src={user.profile_photo_url || user.profile_photo_path} alt={user.name || 'مستخدم'} className="w-7 h-7 rounded-full object-cover" />
                             ) : (
                               <FiUser className="h-5 w-5 text-white" />
                             )}
@@ -278,8 +297,7 @@ const Header = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-48">
                     <DropdownMenuItem onClick={handleThemeToggle} className="flex justify-between items-center gap-2 hover:bg-purple-50/80 hover:text-purple-700 focus:bg-purple-100/80 focus:text-purple-800 transition-all">
-                      {theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
-                      {theme === 'dark' ? <FiSun className="h-4 w-4" /> : <FiMoon className="h-4 w-4" />}
+                      {theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'} {theme === 'dark' ? <FiSun className="h-4 w-4" /> : <FiMoon className="h-4 w-4" />}
                     </DropdownMenuItem>
                     {isAuthenticated && user ? (
                       <>
