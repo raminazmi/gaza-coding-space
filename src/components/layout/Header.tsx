@@ -22,7 +22,7 @@ import { messaging, getToken, onMessage } from '../../firebase';
 import { apiBaseUrl } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
-import { FiUser, FiMoon, FiSun, FiMessageCircle, FiBell } from 'react-icons/fi';
+import { FiUser, FiMoon, FiSun, FiMessageCircle, FiBell, FiBookOpen, FiLogOut } from 'react-icons/fi';
 
 interface ExternalToast {
   action?: { label: string; onClick: () => void };
@@ -36,7 +36,7 @@ const Header = () => {
   const location = useLocation();
   const pathnames = location.pathname.split('/').filter(Boolean);
   const navigate = useNavigate();
-  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0); // الحالة لا تزال موجودة لتخزين عدد الرسائل
 
   const breadcrumbItems = React.useMemo(() => {
     if (pathnames[0] === 'order-service') {
@@ -58,6 +58,11 @@ const Header = () => {
           if (pathnames[0] === 'articles' && originalIdx === 1) label = localStorage.getItem('breadcrumb_article_title') || label;
           if (pathnames[0] === 'order-service' && originalIdx === 1) label = localStorage.getItem('breadcrumb_service_name') || label;
           if (label === 'courses') label = 'الدورات';
+          if (label === 'my-courses') label = 'دوراتي';
+          if (pathnames[0] === 'teacher' && originalIdx === 1) {
+            label = localStorage.getItem('breadcrumb_teacher_name') || 'صفحة المدرب';
+          }
+          if (label === 'teacher') label = 'المدرب';
           if (label === 'profile') label = 'الملف الشخصي';
           if (label === 'notifications') label = 'الإشعارات';
           if (label === 'articles') label = 'المقالات';
@@ -98,6 +103,27 @@ const Header = () => {
   }, [dispatch]);
 
   useEffect(() => {
+    if (isAuthenticated) {
+      const token = localStorage.getItem('token');
+      const fetchUnreadMessagesCount = () => {
+        fetch(`${apiBaseUrl}/api/count-messages`, {
+          method: 'GET',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+          .then((res) => res.json())
+          .then((data) => setUnreadMessages(data.messagesCount || 0))
+          .catch((error) => {
+            console.error('Error fetching unread messages count:', error);
+            setUnreadMessages(0);
+          });
+      };
+      fetchUnreadMessagesCount();
+      const interval = setInterval(fetchUnreadMessagesCount, 1000); // جلب كل 30 ثانية
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
     if (isAuthenticated && 'Notification' in window && Notification.permission === 'granted') {
       getToken(messaging, { vapidKey: 'BCNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7iS70wV68ipFAkmjUTZmaAEdyE3B0whxZIAcAyjOQ' })
         .then((currentToken) => {
@@ -122,7 +148,14 @@ const Header = () => {
             action: { label: 'عرض', onClick: () => navigate('/chat') },
           }
         );
-        setUnreadMessages((prev) => prev + 1);
+        // تحديث عدد الرسائل غير المقروءة عند تلقي إشعار جديد
+        fetch(`${apiBaseUrl}/api/count-messages`, {
+          method: 'GET',
+          headers: localStorage.getItem('token') ? { Authorization: `Bearer ${localStorage.getItem('token')}` } : {},
+        })
+          .then((res) => res.json())
+          .then((data) => setUnreadMessages(data.messagesCount || 0))
+          .catch((error) => console.error('Error fetching unread messages count:', error));
       });
 
       return () => unsubscribe && unsubscribe();
@@ -301,11 +334,21 @@ const Header = () => {
                     </DropdownMenuItem>
                     {isAuthenticated && user ? (
                       <>
-                        <DropdownMenuItem asChild className="hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
-                          <Link to="/profile">الملف الشخصي</Link>
+                        <DropdownMenuItem asChild className="flex justify-between items-center gap-2 hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
+                          <Link to="/profile">
+                            الملف الشخصي
+                            <FiUser className="h-4 w-4" />
+                          </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
-                          تسجيل الخروج
+                        <DropdownMenuItem asChild className="flex justify-between items-center gap-2 hover:bg-purple-50/80 hover:text-purple-700 focus:bg-purple-100/80 focus:text-purple-800 transition-all">
+                          <Link to="/my-courses">
+                            دوراتي
+                            <FiBookOpen className="h-4 w-4" />
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleLogout} className="flex justify-between items-center gap-2 hover:bg-red-50/80 hover:text-red-700 focus:bg-red-100/80 focus:text-red-800 transition-all">
+                          <span>تسجيل الخروج</span>
+                          <FiLogOut className="h-4 w-4" />
                         </DropdownMenuItem>
                       </>
                     ) : (

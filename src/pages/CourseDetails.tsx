@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { apiBaseUrl } from '@/lib/utils';
 import {
   FiUsers, FiBookOpen, FiChevronDown, FiChevronUp,
@@ -17,6 +17,7 @@ import defaultCourseImage from '@public/assests/webapplication.webp';
 const CourseDetails = () => {
   const { id: courseId } = useParams();
   const [course, setCourse] = useState<any>(null);
+  const [teacher, setTeacher] = useState<any>(null); // حالة جديدة لتخزين بيانات المدرب
   const [loading, setLoading] = useState(true);
   const [enrollStatus, setEnrollStatus] = useState<any>(null);
   const [enrollLoading, setEnrollLoading] = useState(false);
@@ -29,20 +30,33 @@ const CourseDetails = () => {
   const [isPendingVerification, setIsPendingVerification] = useState(false);
   const navigate = useNavigate();
   const [isSharing, setIsSharing] = useState(false);
-  
+  const [requirements, setRequirements] = useState<any[]>([]);
+
   useEffect(() => {
     setLoading(true);
     const token = localStorage.getItem('token');
 
-    fetch(`${apiBaseUrl}/api/course-details/${courseId}`, {
+    // Fetch course details
+    const fetchCourseDetails = fetch(`${apiBaseUrl}/api/course-details/${courseId}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {}
-    })
+    }).then(res => res.json());
+
+    // Fetch course requirements
+    const fetchRequirements = fetch(`${apiBaseUrl}/api/course-requirement/${courseId}`)
       .then(res => res.json())
-      .then(data => {
-        setCourse(data.course || null);
-        setIsFavorite(data.course?.is_favorite || false);
-        if (data.course && data.course.name) {
-          localStorage.setItem('breadcrumb_course_name', data.course.name);
+      .then(data => setRequirements(data.CourseRequirement || []))
+      .catch(error => {
+        console.error('Error fetching requirements:', error);
+        setRequirements([]);
+      });
+
+    Promise.all([fetchCourseDetails, fetchRequirements])
+      .then(([courseData]) => {
+        setCourse(courseData.course || null);
+        setTeacher(courseData.Teacher?.[0] || null); // تعيين بيانات المدرب من Teacher[0]
+        setIsFavorite(courseData.course?.is_favorite || false);
+        if (courseData.course?.name) {
+          localStorage.setItem('breadcrumb_course_name', courseData.course.name);
         }
       })
       .finally(() => setLoading(false));
@@ -236,7 +250,7 @@ const CourseDetails = () => {
   const courseImage = course?.image ? cleanMediaUrl(course.image) : defaultCourseImage;
   const headerBg = useDominantColorBackground(courseImage);
 
-const handleShare = async () => {
+  const handleShare = async () => {
     if (!course || !courseId || isSharing) return; // منع التنفيذ إذا كان المشاركة جارية
     setIsSharing(true);
     const shareUrl = `${window.location.origin}/courses/${courseId}`;
@@ -346,7 +360,7 @@ const handleShare = async () => {
               <div className="flex flex-wrap gap-4 text-sm">
                 <span className="flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full">
                   <FiUser className="text-white" />
-                  <span>المدرب: {course.teacher ? course.teacher.name : course.user || '-'}</span>
+                  <span>المدرب: {teacher ? teacher.name : course.user || '-'}</span>
                 </span>
                 <span className="flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full">
                   <FiGlobe className="text-white" />
@@ -607,18 +621,18 @@ const handleShare = async () => {
                     </ul>
 
                     <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-8 mb-4">متطلبات الكورس</h3>
-                    <ul className="space-y-2">
-                      {course.requirements?.length > 0 ? (
-                        course.requirements.map((item: string, index: number) => (
-                          <li key={index} className="flex items-start gap-2">
-                            <BsBookmarkCheck className="text-blue-500 mt-1" />
-                            <span>{item}</span>
+                    {requirements.length > 0 ? (
+                      <ul className="space-y-3">
+                        {requirements.map((req, index) => (
+                          <li key={req.id} className="flex items-start gap-3">
+                            <div className="mt-1 w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                            <span className="text-gray-700 dark:text-gray-200">{req.name}</span>
                           </li>
-                        ))
-                      ) : (
-                        <li className="text-gray-500 dark:text-gray-300">لا يوجد متطلبات مسبقة</li>
-                      )}
-                    </ul>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-gray-500 dark:text-gray-400">لا توجد متطلبات مسبقة لهذا الكورس</p>
+                    )}
                   </div>
                 )}
 
@@ -669,16 +683,16 @@ const handleShare = async () => {
               </div>
             </div>
 
-            {course.teacher && (
+            {teacher && (
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
                 <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-6">عن المدرب</h3>
                 <div className="flex flex-col md:flex-row gap-6">
                   <div className="md:w-1/4 flex justify-center">
                     <div className="w-32 h-32 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
-                      {course.teacher.avatar ? (
+                      {teacher.profile_photo_url ? (
                         <img
-                          src={cleanMediaUrl(course.teacher.avatar)}
-                          alt={course.teacher.name}
+                          src={cleanMediaUrl(teacher.profile_photo_url)}
+                          alt={teacher.name}
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -688,35 +702,41 @@ const handleShare = async () => {
                   </div>
                   <div className="md:w-3/4 space-y-4">
                     <div>
-                      <h4 className="text-lg font-bold dark:text-gray-100">{course.teacher.name}</h4>
-                      <p className="text-gray-600 dark:text-gray-300">{course.teacher.title || 'مدرب محترف'}</p>
+                      <h4 className="text-lg font-bold dark:text-gray-100">{teacher.name}</h4>
+                      <p className="text-gray-600 dark:text-gray-300">{teacher.title || 'مدرب محترف'}</p>
+                      <p className="text-gray-700 dark:text-gray-200 leading-relaxed">
+                        {teacher.email || ''}
+                      </p>
                     </div>
 
                     <div className="flex flex-wrap gap-4">
                       <div className="flex items-center gap-2">
                         <FiUsers className="text-blue-500" />
-                        <span>{course.teacher.students_count || 0} طالب</span>
+                        <span>{teacher.students_count || 0} طالب</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <FiBookOpen className="text-blue-500" />
-                        <span>{course.teacher.courses_count || 0} كورس</span>
+                        <span>{teacher.courses_count || 0} كورس</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <FiStar className="text-blue-500" />
-                        <span>التقييم: {course.teacher.rating || 'غير متاح'}</span>
+                        <span>التقييم: {teacher.rating || 'غير متاح'}</span>
                       </div>
                     </div>
 
                     <p className="text-gray-700 dark:text-gray-200 leading-relaxed">
-                      {course.teacher.bio || 'لا يوجد وصف متاح للمدرب.'}
+                      {teacher.bio || 'لا يوجد وصف متاح للمدرب.'}
                     </p>
 
-                    <button
-                      className="px-4 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors"
-                      onClick={() => navigate(`/instructor/${course.teacher.id}`)}
+                    <Link
+                      to={`/teacher/${teacher.id}`}
+                      className="inline-flex items-center justify-center px-4 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors"
+                      onClick={(e) => {
+                        localStorage.setItem('breadcrumb_teacher_name', teacher.name);
+                      }}
                     >
                       عرض جميع كورسات المدرب
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </div>

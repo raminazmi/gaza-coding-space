@@ -33,6 +33,8 @@ import ArticleDetails from "./pages/ArticleDetails";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import ProtectedLectureRoute from "./components/ProtectedLectureRoute";
+import MyCourses from "./pages/MyCourses";
+import TeacherCourses from "./pages/TeacherCourses";
 
 const queryClient = new QueryClient();
 
@@ -102,6 +104,8 @@ function App() {
                   <Route element={<PrivateRoute />}>
                     <Route path="/courses" element={<Courses />} />
                     <Route path="/courses/:id" element={<CourseDetails />} />
+                    <Route path="/my-courses" element={<MyCourses />} />
+                    <Route path="/teacher/:id" element={<TeacherCourses />} />
                     <Route path="/courses/:courseId/lecture/:lectureId" element={
                       <ProtectedLectureRoute>
                         <LectureDetails />

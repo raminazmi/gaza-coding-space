@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiHome, FiBookOpen, FiFileText, FiBriefcase, FiLayers, FiMail, FiMenu, FiUser, FiSun, FiMoon } from 'react-icons/fi';
+import { FiHome, FiBookOpen, FiFileText, FiBriefcase, FiLayers, FiMail, FiMenu, FiUser, FiSun, FiMoon, FiLogOut } from 'react-icons/fi';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { useAppSelector, useAppDispatch } from '@/hooks';
 import { toggleTheme } from '@/store/slices/themeSlice';
@@ -106,17 +106,27 @@ const BottomNavigation: React.FC = () => {
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="center" className="mb-2 min-w-[7rem] p-1 rounded-lg text-xs">
-          <DropdownMenuItem onClick={handleThemeToggle} className="flex justify-between w-full items-center gap-1 hover:bg-purple-50/80 hover:text-purple-700 focus:bg-purple-100/80 focus:text-purple-800 transition-all rounded">
+          <DropdownMenuItem onClick={handleThemeToggle} className="flex justify-between items-center gap-2 hover:bg-purple-50/80 hover:text-purple-700 focus:bg-purple-100/80 focus:text-purple-800 transition-all">
             {theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
             {theme === 'dark' ? <FiSun className="h-4 w-4" /> : <FiMoon className="h-4 w-4" />}
           </DropdownMenuItem>
           {isAuthenticated && user ? (
             <>
-              <DropdownMenuItem asChild className="hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all rounded">
-                <Link to="/profile">الملف الشخصي</Link>
+              <DropdownMenuItem asChild className="flex justify-between items-center gap-2 hover:bg-purple-50/80 hover:text-purple-700 focus:bg-purple-100/80 focus:text-purple-800 transition-all">
+                <Link to="/profile">
+                  الملف الشخصي
+                  <FiUser className="h-4 w-4" />
+                </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-1 hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all rounded">
+              <DropdownMenuItem asChild className="flex justify-between items-center gap-2 hover:bg-purple-50/80 hover:text-purple-700 focus:bg-purple-100/80 focus:text-purple-800 transition-all">
+                <Link to="/my-courses">
+                  دوراتي
+                  <FiBookOpen className="h-4 w-4" />
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout} className="flex justify-between items-center gap-2 hover:bg-purple-50/80 hover:text-purple-700 focus:bg-purple-100/80 focus:text-purple-800 transition-all">
                 تسجيل الخروج
+                <FiLogOut className="h-4 w-4" />
               </DropdownMenuItem>
             </>
           ) : (

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiUsers, FiBookOpen, FiAward, FiStar, FiCheck, FiCode, FiDollarSign } from 'react-icons/fi';
+import { FiArrowLeft, FiUsers, FiBookOpen, FiAward, FiStar, FiCheck, FiCode, FiDollarSign, FiFileText } from 'react-icons/fi';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
@@ -14,6 +14,12 @@ const Index = () => {
   const [featuredCourses, setFeaturedCourses] = React.useState<any[]>([]);
   const [course, setCourse] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
+  const [stats, setStats] = React.useState({
+    students: 0,
+    courses: 0,
+    projects: 0,
+    articles: 0
+  });
 
   const fetchAllCourses = async (baseUrl: string, token: string | null) => {
     let allCourses: any[] = [];
@@ -85,8 +91,26 @@ const Index = () => {
   const codeIconRef = useRef<HTMLDivElement>(null);
   const heroIllustration = "https://cdn.jsdelivr.net/gh/twitter/twemoji/assets/svg/1f4bb.svg";
   const ctaIllustration = "https://cdn.jsdelivr.net/gh/twitter/twemoji/assets/svg/1f393.svg";
-
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/Statistics`);
+        const data = await response.json();
+        setStats({
+          students: data.students || 0,
+          courses: data.courses || 0,
+          projects: data.projects || 0,
+          articles: data.articles || 0
+        });
+      } catch (error) {
+        console.error('Error loading statistics:', error);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   useEffect(() => {
     gsap.fromTo(heroRef.current,
@@ -101,25 +125,6 @@ const Index = () => {
         }
       }
     );
-
-    gsap.utils.toArray(statsRef.current?.querySelectorAll('.stat-item') || []).forEach((item: any) => {
-      const count = item.querySelector('h3')?.textContent?.replace('+', '') || 0;
-      const obj = { num: 0 };
-
-      gsap.to(obj, {
-        num: count,
-        duration: 2,
-        scrollTrigger: {
-          trigger: item,
-          start: "top 80%",
-        },
-        onUpdate: () => {
-          if (item.querySelector('h3')) {
-            item.querySelector('h3').textContent = Math.floor(obj.num) + (count > 100 ? '+' : '');
-          }
-        }
-      });
-    });
 
     if (bookIconRef.current) {
       gsap.to(bookIconRef.current, {
@@ -272,36 +277,36 @@ const Index = () => {
         <svg className="absolute left-0 top-0 w-full h-full pointer-events-none opacity-10" viewBox="0 0 1440 320"><path fill="#6366f1" fillOpacity="0.2" d="M0,160L60,170.7C120,181,240,203,360,197.3C480,192,600,160,720,133.3C840,107,960,85,1080,101.3C1200,117,1320,171,1380,197.3L1440,224L1440,0L1380,0C1320,0,1200,0,1080,0C960,0,840,0,720,0C600,0,480,0,360,0C240,0,120,0,60,0L0,0Z"></path></svg>
       </section>
 
-      <section className="py-16 bg-white dark:bg-gray-900" ref={statsRef}>
+      <section className="py-16 bg-white dark:bg-gray-900" >
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="text-center stat-item">
               <div className="flex justify-center mb-4">
                 <FiUsers className="h-12 w-12 text-primary floating" />
               </div>
-              <h3 className="text-3xl font-bold text-primary mb-2">0+</h3>
+              <h3 className="text-3xl font-bold text-primary mb-2">{stats.students}+</h3>
               <p className="text-muted-foreground">طالب مسجل</p>
             </div>
             <div className="text-center stat-item">
               <div className="flex justify-center mb-4">
                 <FiBookOpen className="h-12 w-12 text-primary floating" />
               </div>
-              <h3 className="text-3xl font-bold text-primary mb-2">0+</h3>
+              <h3 className="text-3xl font-bold text-primary mb-2">{stats.courses}+</h3>
               <p className="text-muted-foreground">دورة تعليمية</p>
             </div>
             <div className="text-center stat-item">
               <div className="flex justify-center mb-4">
                 <FiAward className="h-12 w-12 text-primary floating" />
               </div>
-              <h3 className="text-3xl font-bold text-primary mb-2">0+</h3>
+              <h3 className="text-3xl font-bold text-primary mb-2">{stats.projects}+</h3>
               <p className="text-muted-foreground">مشروع مكتمل</p>
             </div>
             <div className="text-center stat-item">
               <div className="flex justify-center mb-4">
-                <FiStar className="h-12 w-12 text-primary floating" />
+                <FiFileText className="h-12 w-12 text-primary floating" />
               </div>
-              <h3 className="text-3xl font-bold text-primary mb-2">0.0</h3>
-              <p className="text-muted-foreground">تقييم الطلاب</p>
+              <h3 className="text-3xl font-bold text-primary mb-2">{stats.articles}+</h3>
+              <p className="text-muted-foreground">مقالة تعليمية</p>
             </div>
           </div>
         </div>
