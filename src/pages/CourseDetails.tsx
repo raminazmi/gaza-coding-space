@@ -433,103 +433,84 @@ const CourseDetails = () => {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {chapters.map((chapter: any, idx) => {
-                          // Check if any lecture in this chapter is available to visitors
-                          const hasAvailableLectures = chapter.lectures?.some((lec: any) => lec.show === 1);
-                          const isEnrolled = enrollStatus && enrollStatus.status === 'joined';
-                          const canExpandChapter = isEnrolled || hasAvailableLectures;
-
-                          return (
-                            <div key={chapter.id} className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-                              <button
-                                className={`w-full flex justify-between items-center px-5 py-4 font-bold transition-all ${canExpandChapter
-                                  ? 'bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-100'
-                                  : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                                  }`}
-                                onClick={() => {
-                                  if (!canExpandChapter) return;
-                                  setExpanded(expanded === String(chapter.id) ? null : String(chapter.id));
-                                }}
-                                disabled={!canExpandChapter}
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 flex items-center justify-center">
-                                    {idx + 1}
-                                  </div>
-                                  <span>{chapter.name}</span>
-                                  {!canExpandChapter && (
-                                    <FiLock className="text-gray-400 dark:text-gray-500 text-sm" />
-                                  )}
+                        {chapters.map((chapter: any, idx) => (
+                          <div key={chapter.id} className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                            <button
+                              className="w-full flex justify-between items-center px-5 py-4 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-gray-700 dark:text-gray-100 transition-all"
+                              onClick={() => setExpanded(expanded === String(chapter.id) ? null : String(chapter.id))}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 flex items-center justify-center">
+                                  {idx + 1}
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm text-gray-500 dark:text-gray-300">
-                                    {chapter.lectures && chapter.lectures.length > 0
-                                      ? `${chapter.lectures.reduce((sum, lec) => sum + parseMinutes(lec.timeLecture), 0)} دقيقة`
-                                      : ''}
-                                  </span>
-                                  {canExpandChapter && (expanded === String(chapter.id) ? <FiChevronUp /> : <FiChevronDown />)}
-                                </div>
-                              </button>
+                                <span>{chapter.name}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-gray-500 dark:text-gray-300">
+                                  {chapter.lectures && chapter.lectures.length > 0
+                                    ? `${chapter.lectures.reduce((sum, lec) => sum + parseMinutes(lec.timeLecture), 0)} دقيقة`
+                                    : ''}
+                                </span>
+                                {expanded === String(chapter.id) ? <FiChevronUp /> : <FiChevronDown />}
+                              </div>
+                            </button>
 
-                              {canExpandChapter && (
-                                <div
-                                  className={`transition-all duration-300 overflow-hidden ${expanded === String(chapter.id) ? 'max-h-screen' : 'max-h-0'}`}
-                                >
-                                  <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                                    {chapter.lectures?.length === 0 && (
-                                      <li className="text-center py-4 text-gray-500 dark:text-gray-300 text-sm">
-                                        لا يوجد محاضرات في هذا الفصل
-                                      </li>
-                                    )}
-                                    {chapter.lectures?.map((lec: any, index: number) => {
-                                      // Check if user is enrolled or if lecture is shown to visitors
-                                      const isEnrolled = enrollStatus && enrollStatus.status === 'joined';
-                                      const isShownToVisitors = lec.show === 1;
-                                      const canAccess = isEnrolled || isShownToVisitors;
+                            <div
+                              className={`transition-all duration-300 overflow-hidden ${expanded === String(chapter.id) ? 'max-h-screen' : 'max-h-0'}`}
+                            >
+                              <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                                {chapter.lectures?.length === 0 && (
+                                  <li className="text-center py-4 text-gray-500 dark:text-gray-300 text-sm">
+                                    لا يوجد محاضرات في هذا الفصل
+                                  </li>
+                                )}
+                                {chapter.lectures?.map((lec: any, index: number) => {
+                                  // Check if user is enrolled or if lecture is shown to visitors
+                                  const isEnrolled = enrollStatus && enrollStatus.status === 'joined';
+                                  const isShownToVisitors = lec.show === 1;
+                                  const canAccess = isEnrolled || isShownToVisitors;
 
-                                      return (
-                                        <li
-                                          key={lec.id}
-                                          className={`flex items-center justify-between px-5 py-3 cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-gray-800 ${lec.is_watch ? 'bg-green-50 dark:bg-green-900/30' : ''}`}
-                                          onClick={() => {
-                                            if (!canAccess) {
-                                              return;
-                                            }
-                                            navigate(`/courses/${courseId}/lecture/${lec.id}`);
-                                          }}
-                                        >
-                                          <div className="flex items-center gap-3">
-                                            <div className="w-6 h-6 flex items-center justify-center">
-                                              {renderLectureIcon(lec.type)}
-                                            </div>
-                                            <span className={`text-sm ${!canAccess ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-100'}`}>
-                                              {index + 1}. {lec.name}
-                                              {lec.is_watch && (
-                                                <span className="mr-2 text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-300 px-2 py-0.5 rounded-full">
-                                                  تمت المشاهدة
-                                                </span>
-                                              )}
+                                  return (
+                                    <li
+                                      key={lec.id}
+                                      className={`flex items-center justify-between px-5 py-3 cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-gray-800 ${lec.is_watch ? 'bg-green-50 dark:bg-green-900/30' : ''}`}
+                                      onClick={() => {
+                                        if (!canAccess) {
+                                          return;
+                                        }
+                                        navigate(`/courses/${courseId}/lecture/${lec.id}`);
+                                      }}
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-6 h-6 flex items-center justify-center">
+                                          {renderLectureIcon(lec.type)}
+                                        </div>
+                                        <span className={`text-sm ${!canAccess ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-100'}`}>
+                                          {index + 1}. {lec.name}
+                                          {lec.is_watch && (
+                                            <span className="mr-2 text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-300 px-2 py-0.5 rounded-full">
+                                              تمت المشاهدة
                                             </span>
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            <span className="text-xs text-gray-500 dark:text-gray-300">
-                                              {lec.timeLecture || '00:00'}
-                                            </span>
-                                            {!canAccess ? (
-                                              <FiLock className="text-gray-400 dark:text-gray-500" />
-                                            ) : (
-                                              <FiPlay className="text-blue-500" />
-                                            )}
-                                          </div>
-                                        </li>
-                                      );
-                                    })}
-                                  </ul>
-                                </div>
-                              )}
+                                          )}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-500 dark:text-gray-300">
+                                          {lec.timeLecture || '00:00'}
+                                        </span>
+                                        {!canAccess ? (
+                                          <FiLock className="text-gray-400 dark:text-gray-500" />
+                                        ) : (
+                                          <FiPlay className="text-blue-500" />
+                                        )}
+                                      </div>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
                             </div>
-                          );
-                        })}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>

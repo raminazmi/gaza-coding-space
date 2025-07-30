@@ -60,50 +60,7 @@ function renderLectureItem(lec: any, lectureId: string, courseId: string, enroll
   );
 }
 
-// دالة مساعدة لعرض الشابتر
-function renderChapter(chapter: any, lectureId: string, courseId: string, enrollStatus: any, navigate: any, expanded: any, setExpanded: any) {
-  const isEnrolled = enrollStatus && enrollStatus.status === 'joined';
-  const hasAvailableLectures = chapter.hasAvailableLectures || chapter.lectures?.some((lec: any) => lec.show === 1);
-  const canExpandChapter = isEnrolled || hasAvailableLectures;
 
-  return (
-    <div key={chapter.id} className="mb-3">
-      <button
-        className={`w-full flex justify-between items-center px-3 py-3 rounded-xl font-bold mb-2 transition-all ${canExpandChapter
-          ? 'bg-blue-50 hover:bg-blue-100 text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100'
-          : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-          }`}
-        onClick={() => {
-          if (!canExpandChapter) return;
-          setExpanded(expanded === chapter.id ? null : chapter.id);
-        }}
-        disabled={!canExpandChapter}
-      >
-        <div className="flex items-center gap-1">
-          <span className="text-sm">{chapter.name}</span>
-          <span className="text-xs text-gray-400 dark:text-gray-400">({chapter.lectures?.length || 0} محاضرة)</span>
-          {!canExpandChapter && (
-            <FiLock className="text-gray-400 dark:text-gray-500 text-sm" />
-          )}
-        </div>
-        {canExpandChapter && (expanded === chapter.id ? <FiChevronUp /> : <FiChevronDown />)}
-      </button>
-      {canExpandChapter && (
-        <div
-          className={`transition-all duration-300 overflow-hidden ${expanded === chapter.id ? 'max-h-96' : 'max-h-0'}`}
-          style={{ direction: 'rtl' }}
-        >
-          <ul className="space-y-1 px-1 pt-1">
-            {chapter.lectures?.length === 0 && (
-              <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
-            )}
-            {chapter.lectures?.map((lec) => renderLectureItem(lec, lectureId, courseId, enrollStatus, navigate))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
 
 const LectureDetails = () => {
   const { courseId, lectureId } = useParams();
@@ -342,11 +299,10 @@ const LectureDetails = () => {
       return chapters; // Show all chapters and lectures
     }
 
-    // Show all chapters but mark those with no available lectures as locked
+    // Show all lectures but mark those with show === 0 as locked
     return chapters.map(chapter => ({
       ...chapter,
-      lectures: chapter.lectures || [],
-      hasAvailableLectures: chapter.lectures?.some((lec: any) => lec.show === 1) || false
+      lectures: chapter.lectures || []
     }));
   };
 
@@ -409,11 +365,61 @@ const LectureDetails = () => {
             )}
             {filteredChapters.length > 5 ? (
               <div className="overflow-y-auto max-h-[350px]">
-                {filteredChapters.map((chapter) => renderChapter(chapter, lectureId!, courseId!, enrollStatus, navigate, expanded, setExpanded))}
+                {filteredChapters.map((chapter) => (
+                  <div key={chapter.id} className="mb-3">
+                    <button
+                      className="w-full flex justify-between items-center px-3 py-3 rounded-xl bg-blue-50 hover:bg-blue-100 font-bold text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 mb-2 transition-all"
+                      onClick={() => setExpanded(expanded === chapter.id ? null : chapter.id)}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm">{chapter.name}</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-400">
+                          ({chapter.lectures?.length || 0} محاضرة)
+                        </span>
+                      </div>
+                      {expanded === chapter.id ? <FiChevronUp /> : <FiChevronDown />}
+                    </button>
+                    <div
+                      className={`transition-all duration-300 overflow-hidden ${expanded === chapter.id ? 'max-h-96' : 'max-h-0'}`}
+                      dir="rtl"
+                    >
+                      <ul className="space-y-1 px-1 pt-1">
+                        {chapter.lectures?.length === 0 && (
+                          <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
+                        )}
+                        {chapter.lectures?.map((lec) => renderLectureItem(lec, lectureId!, courseId!, enrollStatus, navigate))}
+                      </ul>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <>
-                {filteredChapters.map((chapter) => renderChapter(chapter, lectureId!, courseId!, enrollStatus, navigate, expanded, setExpanded))}
+                {filteredChapters.map((chapter) => (
+                  <div key={chapter.id} className="mb-3">
+                    <button
+                      className="w-full flex justify-between items-center px-3 py-3 rounded-xl bg-blue-50 hover:bg-blue-100 font-bold text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 mb-2 transition-all"
+                      onClick={() => setExpanded(expanded === chapter.id ? null : chapter.id)}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm">{chapter.name}</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-400">({chapter.lectures?.length || 0} محاضرة)</span>
+                      </div>
+                      {expanded === chapter.id ? <FiChevronUp /> : <FiChevronDown />}
+                    </button>
+                    <div
+                      className={`transition-all duration-300 overflow-hidden ${expanded === chapter.id ? 'max-h-96' : 'max-h-0'}`}
+                      style={{ direction: 'rtl' }}
+                    >
+                      <ul className="space-y-1 px-1 pt-1">
+                        {chapter.lectures?.length === 0 && (
+                          <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
+                        )}
+                        {chapter.lectures?.map((lec) => renderLectureItem(lec, lectureId!, courseId!, enrollStatus, navigate))}
+                      </ul>
+                    </div>
+                  </div>
+                ))}
               </>
             )}
           </aside>
@@ -630,11 +636,59 @@ const LectureDetails = () => {
           )}
           {filteredChapters.length > 5 ? (
             <div className="overflow-y-auto" style={{ maxHeight: '350px' }}>
-              {filteredChapters.map((chapter) => renderChapter(chapter, lectureId!, courseId!, enrollStatus, navigate, expanded, setExpanded))}
+              {filteredChapters.map((chapter) => (
+                <div key={chapter.id} className="mb-3">
+                  <button
+                    className="w-full flex justify-between items-center px-3 py-3 rounded-xl bg-blue-50 hover:bg-blue-100 font-bold text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 mb-2 transition-all"
+                    onClick={() => setExpanded(expanded === chapter.id ? null : chapter.id)}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm">{chapter.name}</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-400">({chapter.lectures?.length || 0} محاضرة)</span>
+                    </div>
+                    {expanded === chapter.id ? <FiChevronUp /> : <FiChevronDown />}
+                  </button>
+                  <div
+                    className={`transition-all duration-300 overflow-hidden ${expanded === chapter.id ? 'max-h-96' : 'max-h-0'}`}
+                    style={{ direction: 'rtl' }}
+                  >
+                    <ul className="space-y-1 px-1 pt-1">
+                      {chapter.lectures?.length === 0 && (
+                        <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
+                      )}
+                      {chapter.lectures?.map((lec) => renderLectureItem(lec, lectureId!, courseId!, enrollStatus, navigate))}
+                    </ul>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <>
-              {filteredChapters.map((chapter) => renderChapter(chapter, lectureId!, courseId!, enrollStatus, navigate, expanded, setExpanded))}
+              {filteredChapters.map((chapter) => (
+                <div key={chapter.id} className="mb-3">
+                  <button
+                    className="w-full flex justify-between items-center px-3 py-3 rounded-xl bg-blue-50 hover:bg-blue-100 font-bold text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 mb-2 transition-all"
+                    onClick={() => setExpanded(expanded === chapter.id ? null : chapter.id)}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm">{chapter.name}</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-400">({chapter.lectures?.length || 0} محاضرة)</span>
+                    </div>
+                    {expanded === chapter.id ? <FiChevronUp /> : <FiChevronDown />}
+                  </button>
+                  <div
+                    className={`transition-all duration-300 overflow-hidden ${expanded === chapter.id ? 'max-h-96' : 'max-h-0'}`}
+                    style={{ direction: 'rtl' }}
+                  >
+                    <ul className="space-y-1 px-1 pt-1">
+                      {chapter.lectures?.length === 0 && (
+                        <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
+                      )}
+                      {chapter.lectures?.map((lec) => renderLectureItem(lec, lectureId!, courseId!, enrollStatus, navigate))}
+                    </ul>
+                  </div>
+                </div>
+              ))}
             </>
           )}
         </aside>
