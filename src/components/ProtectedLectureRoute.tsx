@@ -42,28 +42,33 @@ const ProtectedLectureRoute: React.FC<ProtectedLectureRouteProps> = ({ children 
                     return;
                 }
 
-                const chapters = courseRes.course?.chapters || [];
-                if (chapters.length > 0) {
-                    const firstChapter = chapters[0];
-                    const allowedLectures = firstChapter.lectures ? firstChapter.lectures.slice(0, 2) : [];
-                    const isAllowedLecture = allowedLectures.some((lec: any) => String(lec.id) === String(lectureId));
+                // Check if lecture is shown to visitors (show === 1)
+                const lecture = courseRes.course?.chapters?.flatMap((ch: any) => ch.lectures || []).find((lec: any) => String(lec.id) === String(lectureId));
+                if (lecture && lecture.show === 1) {
+                    setHasAccess(true);
+                    setLoading(false);
+                    return;
+                }
 
-                    if (isAllowedLecture) {
-                        setHasAccess(true);
+                // إذا لم يكن المستخدم مسجل ولم تكن المحاضرة متاحة للزوار
+                if (!token) {
+                    // البحث عن أول محاضرة متاحة للزوار
+                    const allLectures = courseRes.course?.chapters?.flatMap((ch: any) => ch.lectures || []) || [];
+                    const firstAvailableLecture = allLectures.find((lec: any) => lec.show === 1);
+
+                    if (firstAvailableLecture) {
+                        toast({
+                            title: 'غير مصرح لك',
+                            description: 'يجب التسجيل في الدورة للوصول إلى هذه المحاضرة. تم توجيهك إلى أول محاضرة متاحة.',
+                            variant: 'destructive'
+                        });
+                        navigate(`/courses/${courseId}/lecture/${firstAvailableLecture.id}`, { replace: true });
+                        return;
                     } else {
-                        if (allowedLectures.length > 0) {
-                            toast({
-                                title: 'غير مصرح لك',
-                                description: 'يجب التسجيل في الدورة للوصول إلى هذه المحاضرة. تم توجيهك إلى أول محاضرة متاحة.',
-                                variant: 'destructive'
-                            });
-                            navigate(`/courses/${courseId}/lecture/${allowedLectures[0].id}`, { replace: true });
-                            return;
-                        } else {
-                            setHasAccess(false);
-                        }
+                        setHasAccess(false);
                     }
                 } else {
+                    // المستخدم مسجل لكن ليس منضم للكورس
                     setHasAccess(false);
                 }
             } catch (error) {

@@ -101,9 +101,9 @@ function App() {
                 </Route>
                 <Route element={<DefaultLayout />}>
                   <Route path="/" element={<Index />} />
+                  <Route path="/courses" element={<Courses />} />
+                  <Route path="/courses/:id" element={<CourseDetails />} />
                   <Route element={<PrivateRoute />}>
-                    <Route path="/courses" element={<Courses />} />
-                    <Route path="/courses/:id" element={<CourseDetails />} />
                     <Route path="/my-courses" element={<MyCourses />} />
                     <Route path="/teacher/:id" element={<TeacherCourses />} />
                     <Route path="/courses/:courseId/lecture/:lectureId" element={

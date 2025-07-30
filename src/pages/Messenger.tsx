@@ -191,7 +191,8 @@ const Messenger = () => {
     if (!courseId) return;
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${apiBaseUrl}/api/course-details/${courseId}`, {
+      const courseEndpoint = token ? 'course-detailsAuth' : 'course-details';
+      const res = await fetch(`${apiBaseUrl}/api/${courseEndpoint}/${courseId}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {

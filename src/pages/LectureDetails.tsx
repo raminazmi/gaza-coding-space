@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiChevronDown, FiChevronUp, FiSend, FiRefreshCw } from 'react-icons/fi';
+import { FiChevronDown, FiChevronUp, FiSend, FiRefreshCw, FiLock } from 'react-icons/fi';
 import { FaRegUserCircle } from 'react-icons/fa';
 import { apiBaseUrl } from '@/lib/utils';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
@@ -14,6 +14,95 @@ function getWatchStatusText(status?: string) {
   if (status === 'inProgress') return 'قيد المشاهدة';
   if (status === 'notStarted') return 'لم تبدأ بعد';
   return 'لم تشاهد بعد';
+}
+
+// دالة مساعدة لتحديث منطق عرض المحاضرات
+function renderLectureItem(lec: any, lectureId: string, courseId: string, enrollStatus: any, navigate: any) {
+  const isEnrolled = enrollStatus && enrollStatus.status === 'joined';
+  const isShownToVisitors = lec.show === 1;
+  const canAccess = isEnrolled || isShownToVisitors;
+
+  return (
+    <li
+      key={lec.id}
+      className={`flex items-center gap-3 p-3 rounded-xl transition-all ${String(lec.id) === String(lectureId)
+        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm dark:from-gray-800 dark:to-gray-900 dark:border-blue-900'
+        : canAccess ? 'hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer' : 'opacity-60'
+        }`}
+      onClick={() => {
+        if (!canAccess) {
+          return;
+        }
+        navigate(`/courses/${courseId}/lecture/${lec.id}`);
+      }}
+    >
+      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${lec.is_watch?.status === 'endWatch'
+        ? 'bg-green-500 border-green-500 text-white'
+        : 'border-gray-300'
+        }`}>
+        {lec.is_watch?.status === 'endWatch' && (
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+          </svg>
+        )}
+      </div>
+      <span className={`text-sm truncate flex-1 ${String(lec.id) === String(lectureId)
+        ? 'font-bold text-blue-700 dark:text-blue-300'
+        : !canAccess ? 'text-gray-400 dark:text-gray-500'
+          : 'text-gray-600 dark:text-gray-300'
+        }`}>
+        {lec.name}
+      </span>
+      {!canAccess && (
+        <FiLock className="text-gray-400 dark:text-gray-500 text-sm" />
+      )}
+    </li>
+  );
+}
+
+// دالة مساعدة لعرض الشابتر
+function renderChapter(chapter: any, lectureId: string, courseId: string, enrollStatus: any, navigate: any, expanded: any, setExpanded: any) {
+  const isEnrolled = enrollStatus && enrollStatus.status === 'joined';
+  const hasAvailableLectures = chapter.hasAvailableLectures || chapter.lectures?.some((lec: any) => lec.show === 1);
+  const canExpandChapter = isEnrolled || hasAvailableLectures;
+
+  return (
+    <div key={chapter.id} className="mb-3">
+      <button
+        className={`w-full flex justify-between items-center px-3 py-3 rounded-xl font-bold mb-2 transition-all ${canExpandChapter
+          ? 'bg-blue-50 hover:bg-blue-100 text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100'
+          : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+          }`}
+        onClick={() => {
+          if (!canExpandChapter) return;
+          setExpanded(expanded === chapter.id ? null : chapter.id);
+        }}
+        disabled={!canExpandChapter}
+      >
+        <div className="flex items-center gap-1">
+          <span className="text-sm">{chapter.name}</span>
+          <span className="text-xs text-gray-400 dark:text-gray-400">({chapter.lectures?.length || 0} محاضرة)</span>
+          {!canExpandChapter && (
+            <FiLock className="text-gray-400 dark:text-gray-500 text-sm" />
+          )}
+        </div>
+        {canExpandChapter && (expanded === chapter.id ? <FiChevronUp /> : <FiChevronDown />)}
+      </button>
+      {canExpandChapter && (
+        <div
+          className={`transition-all duration-300 overflow-hidden ${expanded === chapter.id ? 'max-h-96' : 'max-h-0'}`}
+          style={{ direction: 'rtl' }}
+        >
+          <ul className="space-y-1 px-1 pt-1">
+            {chapter.lectures?.length === 0 && (
+              <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
+            )}
+            {chapter.lectures?.map((lec) => renderLectureItem(lec, lectureId, courseId, enrollStatus, navigate))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
 }
 
 const LectureDetails = () => {
@@ -253,17 +342,12 @@ const LectureDetails = () => {
       return chapters; // Show all chapters and lectures
     }
 
-    // Show only first chapter with first 2 lectures
-    if (chapters.length > 0) {
-      const firstChapter = chapters[0];
-      const limitedLectures = firstChapter.lectures ? firstChapter.lectures.slice(0, 2) : [];
-      return [{
-        ...firstChapter,
-        lectures: limitedLectures
-      }];
-    }
-
-    return [];
+    // Show all chapters but mark those with no available lectures as locked
+    return chapters.map(chapter => ({
+      ...chapter,
+      lectures: chapter.lectures || [],
+      hasAvailableLectures: chapter.lectures?.some((lec: any) => lec.show === 1) || false
+    }));
   };
 
   const filteredChapters = getFilteredChapters();
@@ -318,120 +402,18 @@ const LectureDetails = () => {
                     محتوى محدود
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-300">
-                    يمكنك مشاهدة محاضرتين فقط من الفصل الأول. سجل في الدورة للوصول إلى جميع المحاضرات!
+                    يمكنك مشاهدة المحاضرات المفتوحة فقط. سجل في الدورة للوصول إلى جميع المحاضرات!
                   </div>
                 </div>
               </div>
             )}
             {filteredChapters.length > 5 ? (
               <div className="overflow-y-auto max-h-[350px]">
-                {filteredChapters.map((chapter) => (
-                  <div key={chapter.id} className="mb-3">
-                    <button
-                      className="w-full flex justify-between items-center px-3 py-3 rounded-xl bg-blue-50 hover:bg-blue-100 font-bold text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 mb-2 transition-all"
-                      onClick={() => setExpanded(expanded === chapter.id ? null : chapter.id)}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm">{chapter.name}</span>
-                        <span className="text-xs text-gray-400 dark:text-gray-400">
-                          ({chapter.lectures?.length || 0} محاضرة)
-                        </span>
-                      </div>
-                      {expanded === chapter.id ? <FiChevronUp /> : <FiChevronDown />}
-                    </button>
-                    <div
-                      className={`transition-all duration-300 overflow-hidden ${expanded === chapter.id ? 'max-h-96' : 'max-h-0'}`}
-                      dir="rtl"
-                    >
-                      <ul className="space-y-1 px-1 pt-1">
-                        {chapter.lectures?.length === 0 && (
-                          <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
-                        )}
-                        {chapter.lectures?.map((lec) => (
-                          <li
-                            key={lec.id}
-                            className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${String(lec.id) === String(lectureId)
-                              ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm dark:from-gray-800 dark:to-gray-900 dark:border-blue-900'
-                              : 'hover:bg-gray-50 dark:hover:bg-gray-800'
-                              }`}
-                            onClick={() => navigate(`/courses/${courseId}/lecture/${lec.id}`)}
-                          >
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${lec.is_watch?.status === 'endWatch'
-                              ? 'bg-green-500 border-green-500 text-white'
-                              : 'border-gray-300'
-                              }`}>
-                              {lec.is_watch?.status === 'endWatch' && (
-                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
-                            </div>
-                            <span className={`text-sm truncate ${String(lec.id) === String(lectureId)
-                              ? 'font-bold text-blue-700 dark:text-blue-300'
-                              : 'text-gray-600 dark:text-gray-300'
-                              }`}>
-                              {lec.name}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                ))}
+                {filteredChapters.map((chapter) => renderChapter(chapter, lectureId!, courseId!, enrollStatus, navigate, expanded, setExpanded))}
               </div>
             ) : (
               <>
-                {filteredChapters.map((chapter) => (
-                  <div key={chapter.id} className="mb-3">
-                    <button
-                      className="w-full flex justify-between items-center px-3 py-3 rounded-xl bg-blue-50 hover:bg-blue-100 font-bold text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 mb-2 transition-all"
-                      onClick={() => setExpanded(expanded === chapter.id ? null : chapter.id)}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm">{chapter.name}</span>
-                        <span className="text-xs text-gray-400 dark:text-gray-400">({chapter.lectures?.length || 0} محاضرة)</span>
-                      </div>
-                      {expanded === chapter.id ? <FiChevronUp /> : <FiChevronDown />}
-                    </button>
-                    <div
-                      className={`transition-all duration-300 overflow-hidden ${expanded === chapter.id ? 'max-h-96' : 'max-h-0'}`}
-                      style={{ direction: 'rtl' }}
-                    >
-                      <ul className="space-y-1 px-1 pt-1">
-                        {chapter.lectures?.length === 0 && (
-                          <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
-                        )}
-                        {chapter.lectures?.map((lec) => (
-                          <li
-                            key={lec.id}
-                            className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${String(lec.id) === String(lectureId)
-                              ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm dark:from-gray-800 dark:to-gray-900 dark:border-blue-900'
-                              : 'hover:bg-gray-50 dark:hover:bg-gray-800'
-                              }`}
-                            onClick={() => navigate(`/courses/${courseId}/lecture/${lec.id}`)}
-                          >
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${lec.is_watch?.status === 'endWatch'
-                              ? 'bg-green-500 border-green-500 text-white'
-                              : 'border-gray-300'
-                              }`}>
-                              {lec.is_watch?.status === 'endWatch' && (
-                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
-                            </div>
-                            <span className={`text-sm truncate ${String(lec.id) === String(lectureId)
-                              ? 'font-bold text-blue-700 dark:text-blue-300'
-                              : 'text-gray-600 dark:text-gray-300'
-                              }`}>
-                              {lec.name}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                ))}
+                {filteredChapters.map((chapter) => renderChapter(chapter, lectureId!, courseId!, enrollStatus, navigate, expanded, setExpanded))}
               </>
             )}
           </aside>
@@ -641,119 +623,18 @@ const LectureDetails = () => {
                   محتوى محدود
                 </div>
                 <div className="text-xs text-gray-600 dark:text-gray-300">
-                  يمكنك مشاهدة محاضرتين فقط من الفصل الأول. سجل في الدورة للوصول إلى جميع المحاضرات!
+                  يمكنك مشاهدة المحاضرات المفتوحة فقط. سجل في الدورة للوصول إلى جميع المحاضرات!
                 </div>
               </div>
             </div>
           )}
           {filteredChapters.length > 5 ? (
             <div className="overflow-y-auto" style={{ maxHeight: '350px' }}>
-              {filteredChapters.map((chapter) => (
-                <div key={chapter.id} className="mb-3">
-                  <button
-                    className="w-full flex justify-between items-center px-3 py-3 rounded-xl bg-blue-50 hover:bg-blue-100 font-bold text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 mb-2 transition-all"
-                    onClick={() => setExpanded(expanded === chapter.id ? null : chapter.id)}
-                  >
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">{chapter.name}</span>
-                      <span className="text-xs text-gray-400 dark:text-gray-400">({chapter.lectures?.length || 0} محاضرة)</span>
-                    </div>
-                    {expanded === chapter.id ? <FiChevronUp /> : <FiChevronDown />}
-                  </button>
-                  <div
-                    className={`transition-all duration-300 overflow-hidden ${expanded === chapter.id ? 'max-h-96' : 'max-h-0'}`}
-                    style={{ direction: 'rtl' }}
-                  >
-                    <ul className="space-y-1 px-1 pt-1">
-                      {chapter.lectures?.length === 0 && (
-                        <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
-                      )}
-                      {chapter.lectures?.map((lec) => (
-                        <li
-                          key={lec.id}
-                          className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${String(lec.id) === String(lectureId)
-                            ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm dark:from-gray-800 dark:to-gray-900 dark:border-blue-900'
-                            : 'hover:bg-gray-50 dark:hover:bg-gray-800'
-                            }`}
-                          onClick={() => navigate(`/courses/${courseId}/lecture/${lec.id}`)}
-                        >
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${lec.is_watch?.status === 'endWatch'
-                            ? 'bg-green-500 border-green-500 text-white'
-                            : 'border-gray-300'
-                            }`}>
-                            {lec.is_watch?.status === 'endWatch' && (
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </div>
-
-                          <span className={`text-sm truncate ${String(lec.id) === String(lectureId)
-                            ? 'font-bold text-blue-700 dark:text-blue-300'
-                            : 'text-gray-600 dark:text-gray-300'
-                            }`}>
-                            {lec.name}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              ))}
+              {filteredChapters.map((chapter) => renderChapter(chapter, lectureId!, courseId!, enrollStatus, navigate, expanded, setExpanded))}
             </div>
           ) : (
             <>
-              {filteredChapters.map((chapter) => (
-                <div key={chapter.id} className="mb-3">
-                  <button
-                    className="w-full flex justify-between items-center px-3 py-3 rounded-xl bg-blue-50 hover:bg-blue-100 font-bold text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 mb-2 transition-all"
-                    onClick={() => setExpanded(expanded === chapter.id ? null : chapter.id)}
-                  >
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">{chapter.name}</span>
-                      <span className="text-xs text-gray-400 dark:text-gray-400">({chapter.lectures?.length || 0} محاضرة)</span>
-                    </div>
-                    {expanded === chapter.id ? <FiChevronUp /> : <FiChevronDown />}
-                  </button>
-                  <div
-                    className={`transition-all duration-300 overflow-hidden ${expanded === chapter.id ? 'max-h-96' : 'max-h-0'}`}
-                    style={{ direction: 'rtl' }}
-                  >
-                    <ul className="space-y-1 px-1 pt-1">
-                      {chapter.lectures?.length === 0 && (
-                        <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
-                      )}
-                      {chapter.lectures?.map((lec) => (
-                        <li
-                          key={lec.id}
-                          className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${String(lec.id) === String(lectureId)
-                            ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm dark:from-gray-800 dark:to-gray-900 dark:border-blue-900'
-                            : 'hover:bg-gray-50 dark:hover:bg-gray-800'
-                            }`}
-                          onClick={() => navigate(`/courses/${courseId}/lecture/${lec.id}`)}
-                        >
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${lec.is_watch?.status === 'endWatch'
-                            ? 'bg-green-500 border-green-500 text-white'
-                            : 'border-gray-300'
-                            }`}>
-                            {lec.is_watch?.status === 'endWatch' && (
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </div>
-                          <span className={`text-sm truncate ${String(lec.id) === String(lectureId)
-                            ? 'font-bold text-blue-700 dark:text-blue-300'
-                            : 'text-gray-600 dark:text-gray-300'
-                            }`}>
-                            {lec.name}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              ))}
+              {filteredChapters.map((chapter) => renderChapter(chapter, lectureId!, courseId!, enrollStatus, navigate, expanded, setExpanded))}
             </>
           )}
         </aside>
