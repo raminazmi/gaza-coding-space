@@ -73,7 +73,6 @@ export const useAuth = () => {
         await authService.logout();
       }
     } catch (error) {
-      console.warn('Logout API call failed:', error);
     } finally {
       dispatch(logout());
     }
@@ -117,28 +116,21 @@ export const useAuth = () => {
   }, [auth.loginAttempts, auth.lastLoginAttempt]);
 
   return {
-    // State
     isAuthenticated: auth.isAuthenticated,
     user: auth.user,
     isLoading: auth.isLoading,
     error: auth.error,
     loginAttempts: auth.loginAttempts,
     tokenExpiry: auth.tokenExpiry,
-    
-    // Actions
-    login,
+        login,
     register,
     logout: logoutUser,
     fetchUser,
     clearError: clearAuthError,
     refreshToken,
     getToken,
-    
-    // Utilities
     canAttemptLogin,
     getWaitTimeUntilNextAttempt,
-    
-    // Auth service (for direct API calls)
     authService,
   };
 };

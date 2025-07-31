@@ -10,7 +10,6 @@ import useAuth from '@/hooks/useAuth';
 import Loading from '@/components/ui/Loading';
 import { useToast } from '@/components/ui/use-toast';
 
-// دالة لتحويل status إلى نص مناسب
 function getWatchStatusText(status?: string) {
   if (status === 'endWatch') return 'تمت المشاهدة';
   if (status === 'inProgress') return 'قيد المشاهدة';
@@ -18,7 +17,6 @@ function getWatchStatusText(status?: string) {
   return 'لم تشاهد بعد';
 }
 
-// دالة مساعدة لتحديث منطق عرض المحاضرات
 function renderLectureItem(lec: any, lectureId: string, courseId: string, enrollStatus: any, navigate: any, setIsNavigating?: any) {
   const isEnrolled = enrollStatus && enrollStatus.status === 'joined';
   const isShownToVisitors = lec.show === 1;
@@ -70,10 +68,10 @@ function renderLectureItem(lec: any, lectureId: string, courseId: string, enroll
   );
 }
 
-
-
 const LectureDetails = () => {
   const { courseId, lectureId } = useParams();
+
+
   const [lecture, setLecture] = useState<any>(null);
   const [course, setCourse] = useState<any>(null);
   const [chapters, setChapters] = useState<any[]>([]);
@@ -92,6 +90,8 @@ const LectureDetails = () => {
 
   const user = useAppSelector((state) => state.user.user);
   const currentUserId = user?.id;
+
+
   const [replyInputs, setReplyInputs] = useState<{ [discussionId: string]: string }>({});
   const [replySending, setReplySending] = useState<{ [discussionId: string]: boolean }>({});
   const messagesEndRefs = useRef<{ [discussionId: string]: HTMLDivElement | null }>({});
@@ -102,9 +102,11 @@ const LectureDetails = () => {
   const { setCourse: setBreadcrumbCourse, setLecture: setBreadcrumbLecture } = useBreadcrumb();
   const { authService, getToken } = useAuth();
 
+
+
   useEffect(() => {
     if (isNavigating) {
-      return; // لا تحمل البيانات إذا كان المستخدم يتنقل
+      return;
     }
 
     setLoading(true);
@@ -121,7 +123,6 @@ const LectureDetails = () => {
         if (lectureRes?.success && lectureRes.data) {
           setLecture(lectureRes.data.Lecture);
 
-          // حفظ بيانات المحاضرة في Redux
           if (lectureRes.data.Lecture?.name && lectureId) {
             setBreadcrumbLecture({
               name: lectureRes.data.Lecture.name,
@@ -135,7 +136,6 @@ const LectureDetails = () => {
           setChapters(courseRes.data.course?.chapters || []);
           setExpanded(courseRes.data.course?.chapters?.[0]?.id?.toString() || null);
 
-          // حفظ بيانات الدورة في Redux
           if (courseRes.data.course?.name && courseId) {
             setBreadcrumbCourse({
               name: courseRes.data.course.name,
@@ -150,7 +150,6 @@ const LectureDetails = () => {
           setEnrollStatus(enrollRes.data.enrollStatus);
         }
       } catch (error) {
-        console.error('Error loading lecture data:', error);
       } finally {
         setLoading(false);
       }
@@ -168,18 +167,50 @@ const LectureDetails = () => {
 
         if (result.data.Mydiscussion) {
           const exists = allDiscussions.some((d: any) => d.id === result.data.Mydiscussion.id);
+
           if (!exists) {
-            allDiscussions = [result.data.Mydiscussion, ...allDiscussions];
+            // تأكد من وجود بيانات المستخدم - إذا لم تكن موجودة، استخدم البيانات الحالية
+            let myDiscussion = { ...result.data.Mydiscussion };
+            if (!myDiscussion.user || !myDiscussion.user.name) {
+              myDiscussion.user = {
+                id: currentUserId,
+                name: user?.name || 'أنا',
+                profile_photo_url: user?.profile_photo_url || null,
+                ...myDiscussion.user // احتفظ بأي بيانات موجودة
+              };
+            }
+
+            allDiscussions = [myDiscussion, ...allDiscussions];
           }
         }
 
+        // التحقق من بيانات المستخدم لجميع المناقشات
+        allDiscussions = allDiscussions.map((discussion: any) => {
+          if (discussion.user?.id === currentUserId && (!discussion.user.name || discussion.user.name === '')) {
+            return {
+              ...discussion,
+              user: {
+                id: currentUserId,
+                name: user?.name || 'أنا',
+                profile_photo_url: user?.profile_photo_url || null,
+                ...discussion.user
+              }
+            };
+          }
+          return discussion;
+        });
+
+        allDiscussions.sort((a: any, b: any) => {
+          if (a.user?.id === currentUserId) return -1;
+          if (b.user?.id === currentUserId) return 1;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+
         setDiscussions(allDiscussions);
       } else {
-        console.warn('Failed to fetch discussions:', result.message);
         setDiscussions([]);
       }
     } catch (error) {
-      console.error('Error fetching discussions:', error);
       setDiscussions([]);
     }
   };
@@ -209,7 +240,6 @@ const LectureDetails = () => {
     }
   }, [discussions, openDiscussionId]);
 
-  // إعادة تعيين isNavigating عندما يكتمل التحميل
   useEffect(() => {
     if (!loading && isNavigating) {
       setIsNavigating(false);
@@ -233,12 +263,13 @@ const LectureDetails = () => {
 
   const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    setSuccessMsg('');
-    setErrorMsg('');
-    if (!input.trim() || input.trim().length < 10) {
-      setErrorMsg('يجب أن يكون طول نص الوصف على الأقل 10 حروف/حرفًا');
+
+    if (!input.trim()) {
       return;
     }
+
+    setSuccessMsg('');
+    setErrorMsg('');
     setSending(true);
     try {
       const result = await authService.postDiscussion({
@@ -256,7 +287,6 @@ const LectureDetails = () => {
         setErrorMsg(result.message || 'حدث خطأ أثناء الإرسال');
       }
     } catch (err) {
-      console.error('Error in handleSend:', err);
       setErrorMsg('حدث خطأ أثناء الإرسال');
     } finally {
       setSending(false);
@@ -264,13 +294,20 @@ const LectureDetails = () => {
   };
 
   const handleReply = async (e: React.FormEvent, discussionId: string) => {
-    e.preventDefault();
-    const reply = replyInputs[discussionId]?.trim();
-    if (!reply || reply.length < 1) return;
     const discussion = discussions.find(d => d.id === discussionId);
+    const isTeacherReplying = isCurrentUserTeacher && discussion?.user?.id !== currentUserId;
+
+    e.preventDefault();
+
+    const reply = replyInputs[discussionId]?.trim();
+
+    if (!reply || reply.length < 1) {
+      return;
+    }
+
     const conversationId = discussion?.conversation?.id;
+
     if (!conversationId) {
-      console.error('No conversation ID found for discussion:', discussionId);
       return;
     }
     setReplySending((prev) => ({ ...prev, [discussionId]: true }));
@@ -280,11 +317,9 @@ const LectureDetails = () => {
       if (result.success) {
         setReplyInputs((prev) => ({ ...prev, [discussionId]: '' }));
         await fetchDiscussions();
-      } else {
-        console.error('Failed to send reply:', result.message);
       }
     } catch (err) {
-      console.error('Error sending reply:', err);
+      // Handle error silently
     } finally {
       setReplySending((prev) => ({ ...prev, [discussionId]: false }));
     }
@@ -315,29 +350,27 @@ const LectureDetails = () => {
         toast({ title: 'خطأ', description: result.message || 'حدث خطأ أثناء تسجيل المشاهدة' });
       }
     } catch (error) {
-      console.error('Error in handleVideoEnd:', error);
       toast({ title: 'خطأ', description: 'حدث خطأ أثناء تسجيل المشاهدة' });
     }
   };
 
-  if (loading) return <div className="flex items-center justifiy-center min-h-screen"><Loading /></div>;
-  if (!lecture || !course) return <div className="min-h-screen flex items-center justify-center">لم يتم العثور على البيانات</div>;
 
-  // طباعة بيانات lecture عند كل render
-  console.log('lecture.is_watch?.status (render):', lecture?.is_watch?.status);
+  if (loading) {
+    return <div className="flex items-center justifiy-center min-h-screen"><Loading /></div>;
+  }
 
-  // Content restriction logic - show lectures based on enrollment and show status
+  if (!lecture || !course) {
+    return <div className="min-h-screen flex items-center justify-center">لم يتم العثور على البيانات</div>;
+  }
+
   const isEnrolled = enrollStatus && enrollStatus.status === 'joined';
-  const isPending = enrollStatus && enrollStatus.status === 'pending';
   const shouldRestrictContent = !isEnrolled;
 
-  // Filter chapters and lectures based on enrollment status
   const getFilteredChapters = () => {
     if (isEnrolled) {
-      return chapters; // Show all chapters and lectures for enrolled users
+      return chapters;
     }
 
-    // For non-enrolled users, show all lectures but mark those with show === 0 as locked
     return chapters.map(chapter => ({
       ...chapter,
       lectures: chapter.lectures || []
@@ -346,10 +379,23 @@ const LectureDetails = () => {
 
   const filteredChapters = getFilteredChapters();
 
-  const hasMyDiscussionWithTeacher = discussions.some(d => {
-    const isMyDiscussion = String(d.user?.id) === String(currentUserId);
-    return isMyDiscussion;
-  });
+  const hasMyDiscussion = discussions.some(d =>
+    String(d.user?.id) === String(currentUserId)
+  );
+
+  // طرق متعددة لتحديد المعلم
+  const teacherIdFromCourse = course?.teacher?.id;
+  const teacherIdFromUser = course?.user_id;
+  const teacherIdFromInstructor = course?.instructor_id;
+  const teacherIdFromCreatedBy = course?.created_by;
+
+  // التحقق من أن المستخدم الحالي هو المدرب بطرق متعددة
+  const isCurrentUserTeacher = currentUserId && (
+    (teacherIdFromCourse && String(currentUserId) === String(teacherIdFromCourse)) ||
+    (teacherIdFromUser && String(currentUserId) === String(teacherIdFromUser)) ||
+    (teacherIdFromInstructor && String(currentUserId) === String(teacherIdFromInstructor)) ||
+    (teacherIdFromCreatedBy && String(currentUserId) === String(teacherIdFromCreatedBy))
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900" dir="rtl">
@@ -386,7 +432,6 @@ const LectureDetails = () => {
             </div>
           </div>
 
-          {/* Mobile Aside - Top */}
           <aside className="w-full bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-xl mb-4 md:hidden">
             <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 border-b border-gray-100 dark:border-gray-700 pb-2">محتوى الدورة</h2>
             {shouldRestrictContent && (
@@ -462,7 +507,7 @@ const LectureDetails = () => {
             )}
           </aside>
 
-          {!hasMyDiscussionWithTeacher && (
+          {!hasMyDiscussion && (
             <form onSubmit={handleSend} className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl shadow-lg p-5 flex flex-col gap-4 border border-blue-100 dark:border-blue-900">
               <div className="flex flex-col gap-1">
                 <span className="font-bold text-base text-blue-800">إبدأ مناقشة مع المدرب</span>
@@ -535,7 +580,9 @@ const LectureDetails = () => {
                             ) : (
                               <div className="w-12 h-12 rounded-xl flex items-center justify-center border border-blue-100 dark:border-gray-700 bg-blue-50 dark:bg-gray-800">
                                 <span className="text-lg font-bold text-blue-600 dark:text-blue-300 select-none">
-                                  {(discussion.user?.name || '').slice(0, 2)}
+                                  {discussion.user?.id === currentUserId
+                                    ? (user?.name || 'أنا').slice(0, 2)
+                                    : (discussion.user?.name || 'م').slice(0, 2)}
                                 </span>
                               </div>
                             )}
@@ -543,7 +590,6 @@ const LectureDetails = () => {
                           <div className="text-start flex-1">
                             <div className="flex justify-between items-start">
                               <div>
-                                <div className="font-bold text-gray-800 dark:text-gray-100">{discussion.user?.name}</div>
                                 <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">{discussion.description}</div>
                               </div>
                               <div className="text-xs text-gray-400">
@@ -570,39 +616,59 @@ const LectureDetails = () => {
                                   }
                                   className={`flex ${msg.user?.id === currentUserId ? 'justify-end' : 'justify-start'} mb-3 items-center gap-2`}
                                 >
-                                  {/* صورة أو رمز المستخدم */}
-                                  {msg.user?.profile_photo_url ? (
-                                    <img
-                                      src={msg.user.profile_photo_url}
-                                      alt={msg.user.name}
-                                      className="w-8 h-8 rounded-xl object-cover border border-blue-100 dark:border-gray-700"
-                                    />
-                                  ) : (
-                                    <div className="w-8 h-8 rounded-xl flex items-center justify-center border border-blue-100 dark:border-gray-700 bg-blue-50 dark:bg-gray-800">
-                                      <span className="text-xs font-bold text-blue-600 dark:text-blue-300 select-none">
-                                        {(msg.user?.name || '').slice(0, 2)}
-                                      </span>
-                                    </div>
+                                  {msg.user?.id !== currentUserId && (
+                                    <>
+                                      {msg.user?.profile_photo_url ? (
+                                        <img
+                                          src={msg.user.profile_photo_url}
+                                          alt={msg.user.name}
+                                          className="w-8 h-8 rounded-xl object-cover border border-blue-100 dark:border-gray-700"
+                                        />
+                                      ) : (
+                                        <div className="w-8 h-8 rounded-xl flex items-center justify-center border border-blue-100 dark:border-gray-700 bg-blue-50 dark:bg-gray-800">
+                                          <span className="text-xs font-bold text-blue-600 dark:text-blue-300 select-none">
+                                            {(msg.user?.name || 'م').slice(0, 2)}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </>
                                   )}
-                                  {/* فقاعة الرسالة */}
+
                                   <div
                                     className={
-                                      `max-w-[100%] rounded-2xl px-4 py-2 border ` +
+                                      `max-w-[80%] rounded-2xl px-4 py-2 border ` +
                                       (msg.user?.id === currentUserId
                                         ? 'bg-blue-100 dark:bg-[#1a2236] text-gray-800 dark:text-white border-blue-200 dark:border-blue-800 rounded-tr-none'
                                         : 'bg-gray-100 dark:bg-[#23272f] text-gray-800 dark:text-white border-gray-200 dark:border-gray-700 rounded-tl-none'
                                       )
                                     }
-                                    style={msg.user?.id === currentUserId ? { backgroundColor: undefined } : { backgroundColor: undefined }}
                                   >
                                     <div className="text-sm">{msg.body}</div>
                                     <div className={`text-xs mt-1 ${msg.user?.id === currentUserId
                                       ? 'text-blue-600 dark:text-blue-200 text-left'
                                       : 'text-gray-500 dark:text-gray-300 text-right'
                                       }`}>
-                                      {msg.user?.name}
+                                      {msg.user?.id === currentUserId ? 'أنا' : (msg.user?.name || 'مستخدم')}
                                     </div>
                                   </div>
+
+                                  {msg.user?.id === currentUserId && (
+                                    <>
+                                      {msg.user?.profile_photo_url ? (
+                                        <img
+                                          src={msg.user.profile_photo_url}
+                                          alt={msg.user.name}
+                                          className="w-8 h-8 rounded-xl object-cover border border-blue-100 dark:border-gray-700"
+                                        />
+                                      ) : (
+                                        <div className="w-8 h-8 rounded-xl flex items-center justify-center border border-blue-100 dark:border-gray-700 bg-blue-50 dark:bg-gray-800">
+                                          <span className="text-xs font-bold text-blue-600 dark:text-blue-300 select-none">
+                                            {(user?.name || 'أنا').slice(0, 2)}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
                                 </div>
                               ))
                             ) : (
@@ -612,32 +678,43 @@ const LectureDetails = () => {
                             )}
                           </div>
 
-                          {discussion.user?.id === currentUserId && (
-                            <form
-                              onSubmit={e => handleReply(e, discussion.id)}
-                              className="flex gap-2 items-center mt-2"
-                            >
-                              <input
-                                type="text"
-                                placeholder="اكتب ردك هنا..."
-                                className="flex-1 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 shadow-sm transition-all bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
-                                value={replyInputs[discussion.id] || ''}
-                                onChange={e => setReplyInputs({ ...replyInputs, [discussion.id]: e.target.value })}
-                                disabled={replySending[discussion.id]}
-                              />
-                              <button
-                                type="submit"
-                                disabled={replySending[discussion.id]}
-                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl w-10 h-10 flex items-center justify-center shadow-md transition-all disabled:opacity-50"
+                          {(() => {
+                            const ownsDiscussion = discussion.user?.id === currentUserId;
+                            const canReply = ownsDiscussion || isCurrentUserTeacher;
+                            const replyReason = ownsDiscussion ? 'يملك المناقشة' : isCurrentUserTeacher ? 'مدرب الكورس' : 'غير مخول';
+
+
+                            return canReply;
+                          })() && (
+                              <form
+                                onSubmit={e => handleReply(e, discussion.id)}
+                                className="flex gap-2 items-center mt-2"
                               >
-                                {replySending[discussion.id] ? (
-                                  <span className="loader w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                                ) : (
-                                  <FiSend className="text-lg" />
-                                )}
-                              </button>
-                            </form>
-                          )}
+                                <input
+                                  type="text"
+                                  placeholder={
+                                    isCurrentUserTeacher && discussion.user?.id !== currentUserId
+                                      ? "اكتب ردك كمدرب..."
+                                      : "اكتب ردك هنا..."
+                                  }
+                                  className="flex-1 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 shadow-sm transition-all bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                                  value={replyInputs[discussion.id] || ''}
+                                  onChange={e => setReplyInputs({ ...replyInputs, [discussion.id]: e.target.value })}
+                                  disabled={replySending[discussion.id]}
+                                />
+                                <button
+                                  type="submit"
+                                  disabled={replySending[discussion.id]}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl w-10 h-10 flex items-center justify-center shadow-md transition-all disabled:opacity-50"
+                                >
+                                  {replySending[discussion.id] ? (
+                                    <span className="loader w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                                  ) : (
+                                    <FiSend className="text-lg" />
+                                  )}
+                                </button>
+                              </form>
+                            )}
                         </div>
                       </AccordionContent>
                     </AccordionItem>
@@ -657,7 +734,6 @@ const LectureDetails = () => {
           </div>
         </main>
 
-        {/* Desktop Aside - Side */}
         <aside className="md:w-1/4 w-full bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-xl mb-4 md:mb-0 md:sticky md:top-20 max-h-fit overflow-y-auto hidden md:block">
           <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 border-b border-gray-100 dark:border-gray-700 pb-2">محتوى الدورة</h2>
           {shouldRestrictContent && (

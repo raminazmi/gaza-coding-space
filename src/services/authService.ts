@@ -11,44 +11,67 @@ export interface AuthResponse {
 class AuthService {
   private baseURL = apiBaseUrl;
 
-  // Get current token
   getToken(): string | null {
     return getStoredToken();
   }
 
-  // Check if user is authenticated
   isAuthenticated(): boolean {
     const token = this.getToken();
     return !!token;
   }
 
-  // Create headers with authentication
   private getAuthHeaders(includeContentType: boolean = true): HeadersInit {
     const headers: HeadersInit = {};
-    
+
     const token = this.getToken();
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    
+
     if (includeContentType) {
       headers['Content-Type'] = 'application/json';
     }
-    
+
+    // إضافة headers للـ CORS
+    headers['Accept'] = 'application/json';
+    headers['X-Requested-With'] = 'XMLHttpRequest';
+
     return headers;
   }
 
-  // Generic API call with automatic token handling
+  private getFormDataHeaders(): HeadersInit {
+    const headers: HeadersInit = {};
+
+    const token = this.getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // للـ FormData لا نضع Content-Type
+    headers['Accept'] = 'application/json';
+    headers['X-Requested-With'] = 'XMLHttpRequest';
+
+    return headers;
+  }
+
   async apiCall(
-    endpoint: string, 
+    endpoint: string,
     options: RequestInit = {},
     requireAuth: boolean = true
   ): Promise<AuthResponse> {
     try {
       const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`;
-      
-      const headers = requireAuth ? this.getAuthHeaders() : { 'Content-Type': 'application/json' };
-      
+      const isFormData = options.body instanceof FormData;
+      let headers: HeadersInit;
+
+      if (requireAuth) {
+        headers = isFormData ? this.getFormDataHeaders() : this.getAuthHeaders();
+      } else {
+        headers = isFormData 
+          ? { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+          : { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+      }
+
       const config: RequestInit = {
         ...options,
         headers: {
@@ -57,16 +80,11 @@ class AuthService {
         },
       };
 
-
-
       const response = await fetch(url, config);
-      
 
-      
-      // Handle different response types
       let data: any;
       const contentType = response.headers.get('content-type');
-      
+
       if (contentType && contentType.includes('application/json')) {
         data = await response.json();
       } else {
@@ -74,9 +92,12 @@ class AuthService {
         data = { message: text };
       }
 
-
-
       if (!response.ok) {
+        if (data.errors) {
+          Object.entries(data.errors).forEach(([field, messages]: [string, any]) => {
+          });
+        }
+
         return {
           success: false,
           message: data.message || `HTTP ${response.status}`,
@@ -97,7 +118,6 @@ class AuthService {
     }
   }
 
-  // Login user
   async login(email: string, password: string): Promise<AuthResponse> {
     return this.apiCall('/api/login', {
       method: 'POST',
@@ -105,7 +125,6 @@ class AuthService {
     }, false);
   }
 
-  // Register user
   async register(userData: {
     name: string;
     email: string;
@@ -118,19 +137,16 @@ class AuthService {
     }, false);
   }
 
-  // Get current user data
   async getCurrentUser(): Promise<AuthResponse> {
     return this.apiCall('/api/student');
   }
 
-  // Logout user
   async logout(): Promise<AuthResponse> {
     return this.apiCall('/api/logout', {
       method: 'DELETE',
     });
   }
 
-  // Verify email
   async verifyEmail(code: string): Promise<AuthResponse> {
     return this.apiCall('/api/verify-email', {
       method: 'POST',
@@ -138,37 +154,33 @@ class AuthService {
     });
   }
 
-  // Verify login code (specific for this app)
   async verifyLoginCode(email: string, loginCode: string): Promise<AuthResponse> {
     return this.apiCall('/api/login/verify', {
       method: 'POST',
-      body: JSON.stringify({ 
-        email, 
-        login_code: loginCode 
+      body: JSON.stringify({
+        email,
+        login_code: loginCode
       }),
     }, false);
   }
 
-  // Course operations
   async getCourseDetails(courseId: string): Promise<AuthResponse> {
-    const endpoint = this.isAuthenticated() 
-      ? `/api/course-detailsAuth/${courseId}` 
+    const endpoint = this.isAuthenticated()
+      ? `/api/course-detailsAuth/${courseId}`
       : `/api/course-details/${courseId}`;
-    
+
     return this.apiCall(endpoint, {}, this.isAuthenticated());
   }
 
   async checkEnrollment(courseId: string): Promise<AuthResponse> {
-    // Try primary endpoint first
     const result = await this.apiCall(`/api/check-enroll/${courseId}`);
-    
-    // If we get HTML response, it means endpoint doesn't exist, try alternatives
+
     if (!result.success && result.message && result.message.includes('<!DOCTYPE html>')) {
       const alternativeEndpoints = [
         `/api/enrollment-status/${courseId}`,
         `/api/enroll/check/${courseId}`
       ];
-      
+
       for (const endpoint of alternativeEndpoints) {
         try {
           const altResult = await this.apiCall(endpoint);
@@ -180,7 +192,7 @@ class AuthService {
         }
       }
     }
-    
+
     return result;
   }
 
@@ -197,7 +209,6 @@ class AuthService {
     });
   }
 
-  // Lecture operations
   async getLectureDetails(courseId: string, lectureId: string): Promise<AuthResponse> {
     return this.apiCall(`/api/LectureDetails/${courseId}/${lectureId}`, {}, this.isAuthenticated());
   }
@@ -218,7 +229,6 @@ class AuthService {
     });
   }
 
-  // Discussion operations
   async getDiscussions(courseId: string, lectureId: string): Promise<AuthResponse> {
     return this.apiCall(`/api/discussions/${courseId}/${lectureId}`, {}, this.isAuthenticated());
   }
@@ -228,10 +238,10 @@ class AuthService {
     course_id: string;
     teacher_id: string;
     lecture_id: string;
-  }): Promise<AuthResponse> {
+  }): Promise<AuthResponse> {    
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
-      formData.append(key, value);
+      formData.append(key, String(value));
     });
 
     return this.apiCall('/api/post-discussion', {
@@ -240,10 +250,10 @@ class AuthService {
     });
   }
 
-  async sendMessage(conversationId: string, message: string): Promise<AuthResponse> {
+  async sendMessage(conversationId: string, message: string): Promise<AuthResponse> {    
     const formData = new FormData();
-    formData.append('conversation_id', conversationId);
-    formData.append('message', message);
+    formData.append('conversation_id', String(conversationId));
+    formData.append('message', String(message));
 
     return this.apiCall('/api/messages', {
       method: 'POST',
@@ -251,10 +261,9 @@ class AuthService {
     });
   }
 
-  // Generic authenticated fetch (for backward compatibility)
   async fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
     const headers = this.getAuthHeaders();
-    
+
     const config: RequestInit = {
       ...options,
       headers: {
@@ -267,6 +276,5 @@ class AuthService {
   }
 }
 
-// Export singleton instance
 export const authService = new AuthService();
 export default authService;
