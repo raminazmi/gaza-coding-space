@@ -24,6 +24,7 @@ import BottomNavigation from '@/components/ui/BottomNavigation';
 import LectureDetails from "./pages/LectureDetails";
 import ScrollToTop from "./ScrollToTop";
 import { useAppSelector } from "@/hooks/useAppSelector";
+import useAuth from '@/hooks/useAuth';
 import { useLocation } from "react-router-dom";
 import PortfolioDetails from "./pages/PortfolioDetails";
 import OrderService from "./pages/OrderService";
@@ -48,7 +49,8 @@ function PrivateRoute() {
 
 function PublicOnlyRoute() {
   const isAuthenticated = useAppSelector((state) => state.user.isAuthenticated);
-  const token = localStorage.getItem('token');
+  const { getToken } = useAuth();
+  const token = getToken();
   if (isAuthenticated && token) {
     return <Navigate to="/" replace />;
   }
@@ -106,11 +108,7 @@ function App() {
                   <Route element={<PrivateRoute />}>
                     <Route path="/my-courses" element={<MyCourses />} />
                     <Route path="/teacher/:id" element={<TeacherCourses />} />
-                    <Route path="/courses/:courseId/lecture/:lectureId" element={
-                      <ProtectedLectureRoute>
-                        <LectureDetails />
-                      </ProtectedLectureRoute>
-                    } />
+                    <Route path="/courses/:courseId/lecture/:lectureId" element={<LectureDetails />} />
                     <Route path="/chat" element={<Messenger />} />
                     <Route path="/chat/:id" element={<ChatRoom />} />
                     <Route path="/profile" element={<Profile />} />

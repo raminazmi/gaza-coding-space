@@ -47,9 +47,12 @@ export const { loginSuccess, logout, updateUser, setUser } = userSlice.actions;
 
 export const fetchUser = createAsyncThunk(
   'user/fetchUser',
-  async (_, { rejectWithValue, dispatch }) => {
+  async (_, { rejectWithValue, dispatch, getState }) => {
     try {
-      const token = localStorage.getItem('token');
+      // Get token from auth state instead of localStorage
+      const state = getState() as any;
+      const token = state.auth?.accessToken;
+      
       if (!token) throw new Error('No token');
       const res = await fetch(`${apiBaseUrl}/api/student`, {
         headers: { Authorization: `Bearer ${token}` },

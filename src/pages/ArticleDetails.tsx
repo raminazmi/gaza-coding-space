@@ -4,11 +4,13 @@ import { apiBaseUrl } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { FiUser, FiCalendar } from 'react-icons/fi';
 import Loading from '@/components/ui/Loading';
+import useBreadcrumb from '@/hooks/useBreadcrumb';
 const ArticleDetails = () => {
   const { id } = useParams();
   const [article, setArticle] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { setArticle: setBreadcrumbArticle } = useBreadcrumb();
 
   useEffect(() => {
     setLoading(true);
@@ -19,8 +21,11 @@ const ArticleDetails = () => {
         const found = (data.articles || data.article || []).find((a: any) => String(a.id) === String(id));
         if (found) {
           setArticle(found);
-          if (found.name) {
-            localStorage.setItem('breadcrumb_article_title', found.name);
+          if (found.name && id) {
+            setBreadcrumbArticle({
+              title: found.name,
+              id: id
+            });
           }
         } else {
           setError('لم يتم العثور على المقالة');

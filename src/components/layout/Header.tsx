@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '@/hooks';
+import useAuth from '@/hooks/useAuth';
 import { toggleTheme } from '@/store/slices/themeSlice';
-import { logout, fetchUser } from '@/store/slices/userSlice';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -20,9 +20,11 @@ import {
 import React from 'react';
 import { messaging, getToken, onMessage } from '../../firebase';
 import { apiBaseUrl } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 import { FiUser, FiMoon, FiSun, FiMessageCircle, FiBell, FiBookOpen, FiLogOut } from 'react-icons/fi';
+import { getToken as getFirebaseToken } from 'firebase/messaging';
+import { useUnreadMessages } from '@/hooks/useUnreadMessages';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface ExternalToast {
   action?: { label: string; onClick: () => void };
@@ -31,19 +33,20 @@ interface ExternalToast {
 const Header = () => {
   const dispatch = useAppDispatch();
   const theme = useAppSelector((state) => state.theme.theme);
-  const user = useAppSelector((state) => state.user.user);
-  const isAuthenticated = useAppSelector((state) => state.user.isAuthenticated);
+  const breadcrumbData = useAppSelector((state) => state.breadcrumb.data);
+  const { authService, getToken, logout: userLogout, user, isAuthenticated } = useAuth();
+  const { unreadMessages, markAllAsRead, setUnreadMessages } = useUnreadMessages();
+  const { notifications, notifCount, notifLoading, markNotificationsAsRead } = useNotifications();
   const location = useLocation();
   const pathnames = location.pathname.split('/').filter(Boolean);
   const navigate = useNavigate();
-  const [unreadMessages, setUnreadMessages] = useState(0); // الحالة لا تزال موجودة لتخزين عدد الرسائل
 
   const breadcrumbItems = React.useMemo(() => {
     if (pathnames[0] === 'order-service') {
       return [
         { to: '/', label: 'الرئيسية' },
         { to: '/services', label: 'الخدمات' },
-        { to: location.pathname, label: localStorage.getItem('breadcrumb_service_name') || 'طلب خدمة' }
+        { to: location.pathname, label: breadcrumbData.serviceName || 'طلب خدمة' }
       ];
     }
     return [
@@ -53,14 +56,14 @@ const Header = () => {
           const originalIdx = pathnames.indexOf(segment, idx > 0 ? pathnames.indexOf(filteredPathnames[idx - 1]) + 1 : 0);
           const to = '/' + pathnames.slice(0, originalIdx + 1).join('/');
           let label = decodeURIComponent(segment);
-          if (pathnames[0] === 'courses' && originalIdx === 1) label = localStorage.getItem('breadcrumb_course_name') || label;
-          if (pathnames[0] === 'courses' && pathnames[2] === 'lecture' && originalIdx === 3) label = localStorage.getItem('breadcrumb_lecture_name') || label;
-          if (pathnames[0] === 'articles' && originalIdx === 1) label = localStorage.getItem('breadcrumb_article_title') || label;
-          if (pathnames[0] === 'order-service' && originalIdx === 1) label = localStorage.getItem('breadcrumb_service_name') || label;
+          if (pathnames[0] === 'courses' && originalIdx === 1) label = breadcrumbData.courseName || label;
+          if (pathnames[0] === 'courses' && pathnames[2] === 'lecture' && originalIdx === 3) label = breadcrumbData.lectureName || label;
+          if (pathnames[0] === 'articles' && originalIdx === 1) label = breadcrumbData.articleTitle || label;
+          if (pathnames[0] === 'order-service' && originalIdx === 1) label = breadcrumbData.serviceName || label;
           if (label === 'courses') label = 'الدورات';
           if (label === 'my-courses') label = 'دوراتي';
           if (pathnames[0] === 'teacher' && originalIdx === 1) {
-            label = localStorage.getItem('breadcrumb_teacher_name') || 'صفحة المدرب';
+            label = breadcrumbData.teacherName || 'صفحة المدرب';
           }
           if (label === 'teacher') label = 'المدرب';
           if (label === 'profile') label = 'الملف الشخصي';
@@ -74,7 +77,7 @@ const Header = () => {
           return { to, label };
         })
     ];
-  }, [location.pathname, pathnames]);
+  }, [location.pathname, pathnames, breadcrumbData]);
 
   const navLinks = [
     { to: '/', label: 'الرئيسية' },
@@ -86,56 +89,39 @@ const Header = () => {
   ];
 
   const handleThemeToggle = () => dispatch(toggleTheme());
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    dispatch(logout());
-    window.location.reload();
+  const handleLogout = async () => {
+    try {
+      await userLogout();
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // في حالة فشل logout API، قم بتسجيل الخروج محلياً
+      navigate('/');
+    }
   };
 
   const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [notifCount, setNotifCount] = useState(0);
-  const [notifLoading, setNotifLoading] = useState(false);
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) dispatch(fetchUser());
-  }, [dispatch]);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      const token = localStorage.getItem('token');
-      const fetchUnreadMessagesCount = () => {
-        fetch(`${apiBaseUrl}/api/count-messages`, {
-          method: 'GET',
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        })
-          .then((res) => res.json())
-          .then((data) => setUnreadMessages(data.messagesCount || 0))
-          .catch((error) => {
-            console.error('Error fetching unread messages count:', error);
-            setUnreadMessages(0);
-          });
-      };
-      fetchUnreadMessagesCount();
-      const interval = setInterval(fetchUnreadMessagesCount, 1000); // جلب كل 30 ثانية
-      return () => clearInterval(interval);
-    }
-  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isAuthenticated && 'Notification' in window && Notification.permission === 'granted') {
-      getToken(messaging, { vapidKey: 'BCNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7iS70wV68ipFAkmjUTZmaAEdyE3B0whxZIAcAyjOQ' })
-        .then((currentToken) => {
+      getFirebaseToken(messaging, { vapidKey: 'BCNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7iS70wV68ipFAkmjUTZmaAEdyE3B0whxZIAcAyjOQ' })
+        .then(async (currentToken) => {
           if (currentToken) {
-            const userToken = localStorage.getItem('token');
-            const formData = new FormData();
-            formData.append('token', currentToken);
-            fetch(`${apiBaseUrl}/api/device-tokens`, {
-              method: 'POST',
-              headers: userToken ? { Authorization: `Bearer ${userToken}` } : {},
-              body: formData,
-            });
+            try {
+              const formData = new FormData();
+              formData.append('token', currentToken);
+
+              const result = await authService.apiCall('/api/device-tokens', {
+                method: 'POST',
+                body: formData,
+              }, true);
+
+              if (!result.success) {
+                console.error('Error sending device token:', result.message);
+              }
+            } catch (error) {
+              console.error('Error sending device token:', error);
+            }
           }
         })
         .catch((err) => console.error('Error retrieving token:', err));
@@ -149,61 +135,25 @@ const Header = () => {
           }
         );
         // تحديث عدد الرسائل غير المقروءة عند تلقي إشعار جديد
-        fetch(`${apiBaseUrl}/api/count-messages`, {
-          method: 'GET',
-          headers: localStorage.getItem('token') ? { Authorization: `Bearer ${localStorage.getItem('token')}` } : {},
-        })
-          .then((res) => res.json())
-          .then((data) => setUnreadMessages(data.messagesCount || 0))
-          .catch((error) => console.error('Error fetching unread messages count:', error));
+        setUnreadMessages(prev => prev + 1);
       });
 
       return () => unsubscribe && unsubscribe();
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, setUnreadMessages]);
 
-  const handleNotifOpen = (open: boolean) => {
+  const handleNotifOpen = async (open: boolean) => {
     setNotifOpen(open);
     if (open && isAuthenticated) {
-      const token = localStorage.getItem('token');
-      fetch(`${apiBaseUrl}/api/notifications/read_at`, {
-        method: 'PUT',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      }).catch((error) => console.error('Error marking notifications as read:', error));
+      await markNotificationsAsRead();
     }
   };
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      const token = localStorage.getItem('token');
-      const fetchNotificationsData = () => {
-        fetch(`${apiBaseUrl}/api/notifications/count`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        })
-          .then((res) => res.json())
-          .then((count) => setNotifCount(count))
-          .catch(() => setNotifCount(0));
-        fetch(`${apiBaseUrl}/api/notifications?page=1`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        })
-          .then((res) => res.json())
-          .then((data) => setNotifications(data.notifications?.data?.slice(0, 5) || []))
-          .catch(() => setNotifications([]));
-      };
-      fetchNotificationsData();
-      const interval = setInterval(fetchNotificationsData, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [isAuthenticated]);
 
-  const handleChatClick = () => {
+
+  const handleChatClick = async () => {
     if (unreadMessages > 0) {
-      setUnreadMessages(0);
-      const token = localStorage.getItem('token');
-      fetch(`${apiBaseUrl}/api/messages/mark-all-read`, {
-        method: 'PUT',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      }).catch((error) => console.error('Error marking messages as read:', error));
+      await markAllAsRead();
     }
     navigate('/chat');
   };

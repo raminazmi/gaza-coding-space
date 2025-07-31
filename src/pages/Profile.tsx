@@ -5,10 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { FiUser, FiMail, FiPhone, FiCamera, FiEdit2, FiBell } from 'react-icons/fi';
 import Loading from '@/components/ui/Loading';
-import { messaging, getToken, onMessage } from '../firebase';
+import { messaging, getToken as getFirebaseToken, onMessage } from '../firebase';
 import { deleteToken } from 'firebase/messaging';
 import { sendDeviceTokenToBackend } from '@/lib/sendDeviceTokenToBackend';
 import { toast } from '@/components/ui/use-toast';
+import useAuth from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 const VAPID_KEY = 'CNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7iS70wV68ipFAkmjUTZmaAEdyE3B0whxZIAcAyjOQebase';
 
@@ -23,10 +25,17 @@ const Profile = () => {
   const [photo, setPhoto] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [notifStatus, setNotifStatus] = useState<'enabled' | 'disabled' | 'pending'>('pending');
+  const { getToken, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
     setLoading(true);
-    const token = localStorage.getItem('token');
+    const token = getToken();
     fetch(`${apiBaseUrl}/api/student`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
@@ -41,7 +50,7 @@ const Profile = () => {
       })
       .catch(() => setError('تعذر جلب بيانات المستخدم'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [isAuthenticated, navigate, getToken]);
 
   useEffect(() => {
     // استقبال الإشعار في الواجهة
@@ -76,7 +85,7 @@ const Profile = () => {
     formData.append('name', form.name);
     formData.append('email', form.email);
     formData.append('phone_number', form.phone_number);
-    const token = localStorage.getItem('token');
+    const token = getToken();
     try {
       const res = await fetch(`${apiBaseUrl}/api/update-profile`, {
         method: 'POST',
@@ -106,7 +115,7 @@ const Profile = () => {
     setError('');
     const formData = new FormData();
     formData.append('profile_photo_path', file);
-    const token = localStorage.getItem('token');
+    const token = getToken();
     try {
       const res = await fetch(`${apiBaseUrl}/api/update-photo-profile`, {
         method: 'POST',
@@ -132,7 +141,7 @@ const Profile = () => {
     try {
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
-        const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: await navigator.serviceWorker.ready });
+        const currentToken = await getFirebaseToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: await navigator.serviceWorker.ready });
         if (currentToken) {
           await sendDeviceTokenToBackend(currentToken);
           setNotifStatus('enabled');

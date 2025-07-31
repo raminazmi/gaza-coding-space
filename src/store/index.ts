@@ -4,6 +4,8 @@ import storage from 'redux-persist/lib/storage';
 import { combineReducers } from '@reduxjs/toolkit';
 import themeSlice from './slices/themeSlice';
 import userSlice from './slices/userSlice';
+import authSlice from './slices/authSlice';
+import breadcrumbSlice from './slices/breadcrumbSlice';
 
 const persistConfig = {
   key: 'gaza-coding-space',
@@ -14,6 +16,8 @@ const persistConfig = {
 const rootReducer = combineReducers({
   theme: themeSlice,
   user: userSlice,
+  auth: authSlice,
+  breadcrumb: breadcrumbSlice,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

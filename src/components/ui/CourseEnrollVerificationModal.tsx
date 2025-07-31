@@ -4,9 +4,9 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { apiBaseUrl } from '@/lib/utils';
 import { FiX, FiMail, FiRefreshCw } from 'react-icons/fi';
+import useAuth from '@/hooks/useAuth';
 
 const CODE_LENGTH = 6;
-
 interface CourseEnrollVerificationModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -25,6 +25,7 @@ const CourseEnrollVerificationModal: React.FC<CourseEnrollVerificationModalProps
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isResending, setIsResending] = useState(false);
     const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
+    const { getToken } = useAuth();
 
     // Reset code when modal opens
     useEffect(() => {
@@ -67,7 +68,7 @@ const CourseEnrollVerificationModal: React.FC<CourseEnrollVerificationModalProps
         setIsSubmitting(true);
 
         try {
-            const token = localStorage.getItem('token');
+            const token = getToken();
             const res = await fetch(`${apiBaseUrl}/api/enroll/${courseId}`, {
                 method: 'PUT',
                 headers: {
@@ -132,7 +133,7 @@ const CourseEnrollVerificationModal: React.FC<CourseEnrollVerificationModalProps
         setIsResending(true);
 
         try {
-            const token = localStorage.getItem('token');
+            const token = getToken();
             const res = await fetch(`${apiBaseUrl}/api/resendCode/${courseId}`, {
                 method: 'PUT',
                 headers: {
@@ -170,7 +171,7 @@ const CourseEnrollVerificationModal: React.FC<CourseEnrollVerificationModalProps
 
     return (
         <div onClick={onClose} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" dir="rtl">
-            <div 
+            <div
                 className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-md mx-auto border border-gray-200 dark:border-gray-700 relative"
                 onClick={(e) => e.stopPropagation()}
             >

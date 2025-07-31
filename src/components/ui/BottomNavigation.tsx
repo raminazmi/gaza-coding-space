@@ -3,8 +3,8 @@ import { FiHome, FiBookOpen, FiFileText, FiBriefcase, FiLayers, FiMail, FiMenu, 
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { useAppSelector, useAppDispatch } from '@/hooks';
 import { toggleTheme } from '@/store/slices/themeSlice';
-import { logout } from '@/store/slices/userSlice';
-import { Link, useLocation } from 'react-router-dom';
+import useAuth from '@/hooks/useAuth';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 const navItems = [
   { label: 'الرئيسية', href: '/', icon: <FiHome className="h-5 w-5 mb-0.5" /> },
@@ -21,18 +21,23 @@ const moreItems = navItems.slice(3);
 const BottomNavigation: React.FC = () => {
   const dispatch = useAppDispatch();
   const theme = useAppSelector((state) => state.theme.theme);
-  const user = useAppSelector((state) => state.user.user);
-  const isAuthenticated = useAppSelector((state) => state.user.isAuthenticated);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout: userLogout, user, isAuthenticated } = useAuth();
 
   const handleThemeToggle = () => {
     dispatch(toggleTheme());
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    dispatch(logout());
-    window.location.reload();
+  const handleLogout = async () => {
+    try {
+      await userLogout();
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // في حالة فشل logout API، قم بتسجيل الخروج محلياً
+      navigate('/');
+    }
   };
 
   const isActive = (href: string) => {

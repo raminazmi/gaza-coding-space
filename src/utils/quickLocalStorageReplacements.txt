@@ -1,0 +1,31 @@
+# Quick replacements for localStorage.getItem('token')
+
+## Files with localStorage usage remaining:
+
+1. src/pages/Profile.tsx - Lines: 28, 78, 108
+2. src/pages/OrderService.tsx - Line: 43
+3. src/pages/Notifications.tsx - Lines: 18, 43
+4. src/pages/MyCourses.tsx - Line: 15
+5. src/pages/Messenger.tsx - Lines: 177, 191, 209, 227, 276, 314, 496, 588
+6. src/pages/Courses.tsx - Lines: 48, 72
+7. src/pages/ChatRoom.tsx - Lines: 19, 73
+8. src/lib/sendDeviceTokenToBackend.ts - Line: 1
+9. src/firebase.ts - Line: 29
+10. src/context/PusherContext.tsx - Line: 33
+11. src/components/ui/CourseEnrollVerificationModal.tsx - Lines: 69, 134
+12. src/components/ProtectedLectureRoute.tsx - Line: 22
+13. src/App.tsx - Line: 50
+
+## Replacement pattern:
+OLD: const token = localStorage.getItem('token');
+NEW: 
+   - Add: import useAuth from '@/hooks/useAuth';
+   - Add: const { getToken } = useAuth();
+   - Change: const token = getToken();
+
+## For components that already use hooks:
+Just add { getToken } to the useAuth() destructuring
+
+## Special cases:
+- firebase.ts: Keep localStorage usage (different context)
+- Some utility files might need different approach

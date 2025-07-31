@@ -1,18 +1,16 @@
 import { useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAppDispatch } from '@/hooks';
-import { loginSuccess } from '@/store/slices/userSlice';
+import useAuth from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { apiBaseUrl } from '@/lib/utils';
 
 const CODE_LENGTH = 6;
 
 const Verify = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
+  const { authService } = useAuth();
   const { toast } = useToast();
   const [code, setCode] = useState(Array(CODE_LENGTH).fill(''));
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,30 +46,90 @@ const Verify = () => {
   const handleSubmitAuto = async (autoCode: string) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
+
+
+
     try {
-      const res = await fetch(`${apiBaseUrl}/api/login/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          login_code: autoCode,
-        })
-      });
-      if (res.ok) {
-        const token = await res.text();
-        localStorage.setItem('token', token);
-        toast({ title: 'تم التحقق بنجاح', description: 'تم تسجيل الدخول بنجاح' });
-        navigate('/');
-        window.location.reload();
-} else {
-        toast({ title: 'خطأ', description: 'رمز التحقق غير صحيح', variant: 'destructive' });
+      const result = await authService.verifyLoginCode(email, autoCode);
+
+      if (result.success && result.data) {
+        // Extract token from different possible response formats
+        let token: string | null = null;
+
+        if (typeof result.data === 'string') {
+          token = result.data;
+        } else if (result.data?.token && typeof result.data.token === 'string') {
+          token = result.data.token;
+        } else if (result.data?.message && typeof result.data.message === 'string') {
+          token = result.data.message;
+        }
+
+        if (token) {
+          // Import store modules
+          const { loginSuccess } = await import('@/store/slices/authSlice');
+          const { store } = await import('@/store');
+
+          // Save token using the new auth system (sessionStorage + encrypted)
+          store.dispatch(loginSuccess({
+            user: { name: email, email }, // temporary user data
+            token
+          }));
+
+          // Fallback: also save to localStorage for compatibility
+          localStorage.setItem('token', token);
+
+          // Try to fetch actual user data
+          try {
+            const userResult = await authService.getCurrentUser();
+            if (userResult.success && userResult.data) {
+              store.dispatch(loginSuccess({
+                user: userResult.data,
+                token
+              }));
+            }
+          } catch (userError) {
+            // User data fetch failed, but we can continue with basic info
+            console.warn('Failed to fetch user data:', userError);
+          }
+
+          // Register device token after successful authentication
+          try {
+            const { registerDeviceToken } = await import('@/firebase');
+            await registerDeviceToken();
+          } catch (error) {
+            console.warn('Firebase device token registration failed:', error);
+          }
+
+          // Show success message and navigate
+          toast({ title: 'تم التحقق بنجاح', description: 'تم تسجيل الدخول بنجاح' });
+
+          // Navigate and reload to ensure clean authentication state
+          setTimeout(() => {
+            navigate('/', { replace: true });
+          }, 500); // Give time for toast to show
+        } else {
+          throw new Error('لم يتم الحصول على token');
+        }
+      } else {
+        toast({
+          title: 'خطأ',
+          description: result.message || 'رمز التحقق غير صحيح',
+          variant: 'destructive'
+        });
         setCode(Array(CODE_LENGTH).fill(''));
         inputsRef.current[0]?.focus();
       }
     } catch (err) {
-      toast({ title: 'خطأ', description: 'حدث خطأ أثناء الاتصال بالخادم', variant: 'destructive' });
+      toast({
+        title: 'خطأ',
+        description: 'حدث خطأ أثناء الاتصال بالخادم',
+        variant: 'destructive'
+      });
+      setCode(Array(CODE_LENGTH).fill(''));
+      inputsRef.current[0]?.focus();
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   // إرسال يدوي عند الضغط على الزر

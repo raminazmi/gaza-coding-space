@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import useAuth from '@/hooks/useAuth';
 import { apiBaseUrl } from '@/lib/utils';
 import Loading from '@/components/ui/Loading';
 import { useToast } from '@/components/ui/use-toast';
@@ -16,19 +17,38 @@ const ProtectedLectureRoute: React.FC<ProtectedLectureRouteProps> = ({ children 
     const [enrollStatus, setEnrollStatus] = useState<any>(null);
     const [course, setCourse] = useState<any>(null);
     const { toast } = useToast();
+    const { getToken } = useAuth();
 
     useEffect(() => {
         const checkAccess = async () => {
             try {
-                const token = localStorage.getItem('token');
+                const token = getToken();
 
                 const [courseRes, enrollRes] = await Promise.all([
                     fetch(`${apiBaseUrl}/api/LectureDetails/${courseId}/${lectureId}`, {
                         headers: token ? { Authorization: `Bearer ${token}` } : {}
-                    }).then(r => r.json()),
+                    }).then(async (r) => {
+                        if (!r.ok) {
+                            if (r.status === 429) {
+                                console.warn('Rate limit exceeded for lecture details');
+                                return { course: null };
+                            }
+                            throw new Error(`HTTP ${r.status}`);
+                        }
+                        return r.json();
+                    }),
                     token ? fetch(`${apiBaseUrl}/api/check-enroll/${courseId}`, {
                         headers: { Authorization: `Bearer ${token}` }
-                    }).then(r => r.json()) : Promise.resolve(null)
+                    }).then(async (r) => {
+                        if (!r.ok) {
+                            if (r.status === 429) {
+                                console.warn('Rate limit exceeded for enrollment check');
+                                return null;
+                            }
+                            throw new Error(`HTTP ${r.status}`);
+                        }
+                        return r.json();
+                    }) : Promise.resolve(null)
                 ]);
 
                 setCourse(courseRes.course);
@@ -36,15 +56,18 @@ const ProtectedLectureRoute: React.FC<ProtectedLectureRouteProps> = ({ children 
 
                 const isEnrolled = enrollRes?.enrollStatus?.status === 'joined';
 
-                if (isEnrolled) {
+                // Check if lecture is shown to visitors (show === 1) - هذا يجب أن يكون أولاً
+                const lecture = courseRes.course?.chapters?.flatMap((ch: any) => ch.lectures || []).find((lec: any) => String(lec.id) === String(lectureId));
+
+                if (lecture && lecture.show === 1) {
+                    // المحاضرة مفتوحة للجميع
                     setHasAccess(true);
                     setLoading(false);
                     return;
                 }
 
-                // Check if lecture is shown to visitors (show === 1)
-                const lecture = courseRes.course?.chapters?.flatMap((ch: any) => ch.lectures || []).find((lec: any) => String(lec.id) === String(lectureId));
-                if (lecture && lecture.show === 1) {
+                if (isEnrolled) {
+                    // المستخدم مسجل في الدورة
                     setHasAccess(true);
                     setLoading(false);
                     return;

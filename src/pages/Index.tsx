@@ -5,6 +5,7 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
 import { apiBaseUrl } from '@/lib/utils';
+import useAuth from '@/hooks/useAuth';
 import CourseCardSkeleton from '@/components/ui/CourseCardSkeleton';
 import ServiceCardSkeleton from '@/components/ui/ServiceCardSkeleton';
 
@@ -57,7 +58,7 @@ const Index = () => {
   useEffect(() => {
     const loadCourses = async () => {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = getToken();
 
       try {
         const courses = await fetchAllCourses(`${apiBaseUrl}/api/courses`, token);
@@ -92,6 +93,7 @@ const Index = () => {
   const heroIllustration = "https://cdn.jsdelivr.net/gh/twitter/twemoji/assets/svg/1f4bb.svg";
   const ctaIllustration = "https://cdn.jsdelivr.net/gh/twitter/twemoji/assets/svg/1f393.svg";
   const navigate = useNavigate();
+  const { getToken } = useAuth();
 
   React.useEffect(() => {
     const fetchStats = async () => {

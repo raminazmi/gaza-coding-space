@@ -23,26 +23,55 @@ const messaging = getMessaging(app);
 
 export { messaging, getToken, onMessage };
 
-// Request token and register with backend
-getToken(messaging, { vapidKey: 'BCNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7iS70wV68ipFAkmjUTZmaAEdyE3B0whxZIAcAyjOQ' })
-    .then((currentToken) => {
+// Function to register device token after authentication
+export const registerDeviceToken = async () => {
+    try {
+        const currentToken = await getToken(messaging, { 
+            vapidKey: 'BCNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7iS70wV68ipFAkmjUTZmaAEdyE3B0whxZIAcAyjOQ' 
+        });
+        
         if (currentToken) {
-            const userToken = localStorage.getItem('token');
-            axios.post(`${apiBaseUrl}/api/device-tokens`, {
-                token: currentToken,
-                device_name: window.navigator.userAgent
-            }, {
-                headers: userToken ? { Authorization: `Bearer ${userToken}` } : {}
-            }).catch((err) => {
-                console.error('Error registering token:', err);
-            });
+            // Try both new sessionStorage and old localStorage for backward compatibility
+            let userToken = sessionStorage.getItem('auth_token');
+            if (userToken) {
+                // Decrypt if it's encrypted
+                try {
+                    const decoded = atob(userToken);
+                    userToken = decoded.replace('gaza-coding-space-salt', '');
+                } catch (e) {
+                    // If decryption fails, use as is
+                }
+            } else {
+                // Fallback to localStorage
+                userToken = localStorage.getItem('token');
+            }
+            
+            if (userToken) {
+                await axios.post(`${apiBaseUrl}/api/device-tokens`, {
+                    token: currentToken,
+                    device_name: window.navigator.userAgent
+                }, {
+                    headers: { Authorization: `Bearer ${userToken}` }
+                });
+                console.log('Device token registered successfully');
+            } else {
+                console.log('No user token available for device registration');
+            }
         } else {
-            console.log('No registration token available. Request permission to generate one.');
+            console.log('No Firebase token available');
         }
-    })
-    .catch((err) => {
-        console.error('An error occurred while retrieving token:', err);
-    });
+    } catch (error) {
+        console.error('Error registering device token:', error);
+    }
+};
+
+// Initialize device token registration if user is already authenticated
+export const initializeFirebaseForAuthenticatedUser = () => {
+    const userToken = sessionStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (userToken) {
+        registerDeviceToken();
+    }
+};
 
 // Handle foreground messages
 onMessage(messaging, (payload) => {

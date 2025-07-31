@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FiBookOpen } from 'react-icons/fi';
 import Pagination from '@/components/ui/pagination';
+import useAuth from '@/hooks/useAuth';
 
 export default function MyCourses() {
     const [courses, setCourses] = useState<any[]>([]);
@@ -13,11 +14,17 @@ export default function MyCourses() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const navigate = useNavigate();
-    const token = localStorage.getItem('token');
+    const { getToken, isAuthenticated } = useAuth();
 
     useEffect(() => {
+        if (!isAuthenticated) {
+            navigate('/login');
+            return;
+        }
+
         const fetchMyCourses = async () => {
             try {
+                const token = getToken();
                 const response = await fetch(`${apiBaseUrl}/api/my-courses?page=${currentPage}`, {
                     headers: token ? { Authorization: `Bearer ${token}` } : {},
                 });
@@ -31,7 +38,7 @@ export default function MyCourses() {
             }
         };
         fetchMyCourses();
-    }, [token, currentPage]);
+    }, [isAuthenticated, navigate, getToken, currentPage]);
 
     const handlePageChange = (page: number) => {
         setCurrentPage(page);

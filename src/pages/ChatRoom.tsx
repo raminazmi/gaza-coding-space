@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { apiBaseUrl } from '@/lib/utils';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import Loading from '@/components/ui/Loading';
+import useAuth from '@/hooks/useAuth';
 
 const ChatRoom = () => {
   const { id } = useParams();
@@ -13,11 +14,13 @@ const ChatRoom = () => {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const { getToken, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   // Fetch messages
   const fetchMessages = async () => {
     setLoading(true);
-    const token = localStorage.getItem('token');
+    const token = getToken();
     try {
       const res = await fetch(`${apiBaseUrl}/api/messages?conversation_id=${id}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -52,6 +55,11 @@ const ChatRoom = () => {
   };
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
     fetchMessages();
     // Polling for new messages every 5 seconds
     const interval = setInterval(fetchMessages, 5000);
@@ -71,7 +79,7 @@ const ChatRoom = () => {
     if (!input.trim()) return;
     setSending(true);
     setError('');
-    const token = localStorage.getItem('token');
+    const token = getToken();
     const formData = new FormData();
     formData.append('conversation_id', id!);
     formData.append('body', input);

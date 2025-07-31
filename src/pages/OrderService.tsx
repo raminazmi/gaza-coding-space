@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import useBreadcrumb from '@/hooks/useBreadcrumb';
+import useAuth from '@/hooks/useAuth';
 
 const OrderService = () => {
   const location = useLocation();
@@ -26,6 +28,8 @@ const OrderService = () => {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [service, setService] = useState<any>(null);
+  const { setService: setBreadcrumbService } = useBreadcrumb();
+  const { getToken } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -39,7 +43,7 @@ const OrderService = () => {
     const formData = new FormData();
     Object.entries(form).forEach(([key, value]) => formData.append(key, value));
     try {
-      const token = localStorage.getItem('token');
+      const token = getToken();
       const res = await fetch(`${apiBaseUrl}/api/orders`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -67,8 +71,11 @@ const OrderService = () => {
       .then(res => res.json())
       .then(data => {
         setService(data.service || null);
-        if (data.service && data.service.name) {
-          localStorage.setItem('breadcrumb_service_name', data.service.name);
+        if (data.service && data.service.name && id) {
+          setBreadcrumbService({
+            name: data.service.name,
+            id: id
+          });
         }
       })
       .finally(() => setLoading(false));

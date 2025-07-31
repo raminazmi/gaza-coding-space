@@ -3,6 +3,8 @@ import { apiBaseUrl } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Loading from '@/components/ui/Loading';
+import useAuth from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 const PAGE_SIZE = 10;
 
@@ -12,11 +14,13 @@ const Notifications = () => {
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const { getToken, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   const fetchNotifications = async (pageNum = 1) => {
     setLoading(true);
     setError('');
-    const token = localStorage.getItem('token');
+    const token = getToken();
     try {
       const res = await fetch(`${apiBaseUrl}/api/notifications?page=${pageNum}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -40,14 +44,19 @@ const Notifications = () => {
   };
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
     // Mark all notifications as read on page load
-    const token = localStorage.getItem('token');
+    const token = getToken();
     fetch(`${apiBaseUrl}/api/notifications/read_at`, {
       method: 'PUT',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     fetchNotifications(1);
-  }, []);
+  }, [isAuthenticated, navigate]);
 
   const handleLoadMore = () => {
     fetchNotifications(page + 1);

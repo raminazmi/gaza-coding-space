@@ -12,12 +12,14 @@ import { BsBookmarkCheck, BsPatchCheck } from 'react-icons/bs';
 import CourseDetailsSkeleton from '@/components/ui/CourseDetailsSkeleton';
 import CourseEnrollVerificationModal from '@/components/ui/CourseEnrollVerificationModal';
 import { useDominantColorBackground } from "@/hooks/useDominantColorBackground";
+import useBreadcrumb from '@/hooks/useBreadcrumb';
+import useAuth from '@/hooks/useAuth';
 import defaultCourseImage from '@public/assests/webapplication.webp';
 
 const CourseDetails = () => {
   const { id: courseId } = useParams();
   const [course, setCourse] = useState<any>(null);
-  const [teacher, setTeacher] = useState<any>(null); // حالة جديدة لتخزين بيانات المدرب
+  const [teacher, setTeacher] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [enrollStatus, setEnrollStatus] = useState<any>(null);
   const [enrollLoading, setEnrollLoading] = useState(false);
@@ -29,66 +31,142 @@ const CourseDetails = () => {
   const [hasAutoShownModal, setHasAutoShownModal] = useState(false);
   const [isPendingVerification, setIsPendingVerification] = useState(false);
   const navigate = useNavigate();
+  const { setCourse: setBreadcrumbCourse, setTeacher: setBreadcrumbTeacher } = useBreadcrumb();
+  const { authService, getToken } = useAuth();
   const [isSharing, setIsSharing] = useState(false);
   const [requirements, setRequirements] = useState<any[]>([]);
+  const [chapters, setChapters] = useState<any[]>([]);
+  const [imageUrl, setImageUrl] = React.useState('');
+  const [previewUrl, setPreviewUrl] = React.useState('');
+
+  const handleImageChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const url = URL.createObjectURL(file);
+      setImageUrl(url);
+      setPreviewUrl(url);
+    }
+  };
+
+  const handleUrlChange = (e) => {
+    setImageUrl(e.target.value);
+    setPreviewUrl(e.target.value);
+  };
+
+
 
   useEffect(() => {
     setLoading(true);
-    const token = localStorage.getItem('token');
 
-    // استخدام API مختلف حسب حالة تسجيل الدخول
-    const apiEndpoint = token ? `/api/course-detailsAuth/${courseId}` : `/api/course-details/${courseId}`;
+    const loadData = async () => {
+      try {
+        // Check authentication status
+        const isAuth = authService.isAuthenticated();
+        const token = getToken();
 
-    // Fetch course details
-    const fetchCourseDetails = fetch(`${apiBaseUrl}${apiEndpoint}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
-    }).then(res => res.json());
+        // Fetch course details using authService
+        const courseResult = await authService.getCourseDetails(courseId!);
 
-    // Fetch course requirements
-    const fetchRequirements = fetch(`${apiBaseUrl}/api/course-requirement/${courseId}`)
-      .then(res => res.json())
-      .then(data => setRequirements(data.CourseRequirement || []))
-      .catch(error => {
-        console.error('Error fetching requirements:', error);
-        setRequirements([]);
-      });
+        // Fetch course requirements
+        const requirementsResult = await authService.apiCall(`/api/course-requirement/${courseId}`, {}, false);
 
-    Promise.all([fetchCourseDetails, fetchRequirements])
-      .then(([courseData]) => {
-        setCourse(courseData.course || null);
-        setTeacher(courseData.course?.teacher || null); // تعيين بيانات المدرب من course.teacher
-        setIsFavorite(courseData.course?.is_favorite || false);
-        if (courseData.course?.name) {
-          localStorage.setItem('breadcrumb_course_name', courseData.course.name);
-        }
-      })
-      .finally(() => setLoading(false));
+        if (courseResult.success && courseResult.data) {
+          const courseData = courseResult.data;
 
-    if (token) {
-      fetch(`${apiBaseUrl}/api/check-enroll/${courseId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.status) {
-            setEnrollStatus(data.enrollStatus);
+          // Set course data
+          setCourse(courseData.course);
+          setIsFavorite(courseData.course?.is_favorite || false);
+          setEnrollStatus(courseData.enrollStatus || null);
+          setChapters(courseData.course?.chapters || []);
+          setTeacher(courseData.course?.teacher || null);
+
+          // Fallback: Check if user has access to lectures (indicates enrollment)
+          if (!courseData.enrollStatus && isAuth && token && courseData.course?.chapters) {
+            const hasLectureAccess = courseData.course.chapters.some((chapter: any) =>
+              chapter.lectures?.some((lecture: any) => lecture.is_watch === true)
+            );
+
+            if (hasLectureAccess) {
+              setEnrollStatus({ status: 'joined', detected_from: 'lecture_access' });
+            }
           }
-        });
-    }
+
+          // If no enrollment status in main response and user is authenticated, check separately
+          if (!courseData.enrollStatus && isAuth && token) {
+            try {
+              const enrollResult = await authService.checkEnrollment(courseId!);
+              if (enrollResult.success && enrollResult.data) {
+                // Handle different response formats
+                let processedStatus = enrollResult.data;
+
+                // If data.enrollStatus exists, use it
+                if (enrollResult.data.enrollStatus) {
+                  processedStatus = enrollResult.data.enrollStatus;
+                }
+                // If data.status is boolean true, convert to 'joined'
+                else if (enrollResult.data.status === true) {
+                  processedStatus = { status: 'joined', ...enrollResult.data };
+                }
+
+                setEnrollStatus(processedStatus);
+              }
+            } catch (enrollError) {
+              console.warn('Could not check enrollment status:', enrollError);
+            }
+          }
+
+          // Auto-expand first chapter
+          if (courseData.course?.chapters?.length > 0 && !didAutoExpand) {
+            setExpanded(String(courseData.course.chapters[0].id));
+            setDidAutoExpand(true);
+          }
+
+          // Save breadcrumb data
+          if (courseData.course?.name && courseId) {
+            setBreadcrumbCourse({
+              name: courseData.course.name,
+              id: courseId,
+              teacherName: courseData.course.teacher?.name || courseData.course.user,
+              teacherId: courseData.course.teacher?.id?.toString()
+            });
+          }
+
+          if (courseData.course?.teacher?.name && courseData.course?.teacher?.id) {
+            setBreadcrumbTeacher({
+              name: courseData.course.teacher.name,
+              id: courseData.course.teacher.id.toString()
+            });
+          }
+        }
+
+        // Handle requirements
+        if (requirementsResult.success && requirementsResult.data) {
+          setRequirements(requirementsResult.data.CourseRequirement || []);
+        } else {
+          setRequirements([]);
+        }
+
+      } catch (error) {
+        console.error('Error loading course data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, [courseId]);
 
   useEffect(() => {
     if (
       !didAutoExpand &&
-      course &&
-      course.chapters &&
-      course.chapters.length > 0 &&
+      chapters &&
+      chapters.length > 0 &&
       expanded === null
     ) {
-      setExpanded(String(course.chapters[0].id));
+      setExpanded(String(chapters[0].id));
       setDidAutoExpand(true);
     }
-  }, [course, expanded, didAutoExpand]);
+  }, [chapters, expanded, didAutoExpand]);
 
   useEffect(() => {
     if (enrollStatus && enrollStatus.status === 'pending' && !showVerificationModal && !hasAutoShownModal) {
@@ -97,68 +175,70 @@ const CourseDetails = () => {
     }
   }, [enrollStatus, showVerificationModal, hasAutoShownModal]);
 
-  const toggleFavorite = () => {
-    const token = localStorage.getItem('token');
+  const toggleFavorite = async () => {
+    const token = getToken();
     if (!token) {
       navigate('/login');
       return;
     }
 
-    fetch(`${apiBaseUrl}/api/toggle-favorite/${courseId}`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setIsFavorite(!isFavorite);
-        }
-      });
+    try {
+      const result = await authService.toggleFavorite(courseId!);
+
+      if (!result.success) {
+        console.warn('Failed to toggle favorite:', result.message);
+        return;
+      }
+
+      setIsFavorite(!isFavorite);
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
   };
 
-  const handleEnroll = () => {
-    const token = localStorage.getItem('token');
+  const handleEnroll = async () => {
+    const token = getToken();
     if (!token) {
       navigate('/login');
       return;
     }
 
     setEnrollLoading(true);
-    fetch(`${apiBaseUrl}/api/enroll`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ courseId })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.message) {
-          setShowVerificationModal(true);
-          setIsPendingVerification(true);
-        } else {
-          throw new Error('فشل في بدء عملية التسجيل');
-        }
-      })
-      .catch(error => {
-        console.error('Enrollment error:', error);
-      })
-      .finally(() => setEnrollLoading(false));
+    try {
+      const result = await authService.enrollInCourse(courseId!);
+
+      if (!result.success) {
+        console.warn('Failed to enroll:', result.message);
+        return;
+      }
+
+      if (result.data?.message) {
+        setShowVerificationModal(true);
+        setIsPendingVerification(true);
+      }
+    } catch (error) {
+      console.error('Enrollment error:', error);
+    } finally {
+      setEnrollLoading(false);
+    }
   };
 
-  const handleVerificationSuccess = () => {
+  const handleVerificationSuccess = async () => {
     setShowVerificationModal(false);
     setIsPendingVerification(false);
-    fetch(`${apiBaseUrl}/api/check-enroll/${courseId}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status) {
-          setEnrollStatus(data.enrollStatus);
-        }
-      });
+
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const result = await authService.checkEnrollment(courseId!);
+
+      if (result.success && result.data?.status) {
+        setEnrollStatus(result.data.enrollStatus);
+      }
+    } catch (error) {
+      console.error('Error checking enrollment status:', error);
+    }
   };
 
   function cleanMediaUrl(url: string) {
@@ -185,6 +265,8 @@ const CourseDetails = () => {
   };
 
   const renderEnrollButton = () => {
+
+    // Check for pending status
     if ((enrollStatus && enrollStatus.status === 'pending') || isPendingVerification) {
       return (
         <button
@@ -196,7 +278,15 @@ const CourseDetails = () => {
       );
     }
 
-    if (enrollStatus && enrollStatus.status === 'joined') {
+    // Check for joined/enrolled status (multiple possible formats)
+    const isEnrolled = enrollStatus && (
+      enrollStatus.status === 'joined' ||
+      enrollStatus.status === true ||
+      enrollStatus.status === 'enrolled' ||
+      (enrollStatus.enrollStatus && enrollStatus.enrollStatus.status === 'joined')
+    );
+
+    if (isEnrolled) {
       return (
         <button
           className="w-full bg-green-100 text-green-700 py-3 rounded-lg font-bold text-lg flex items-center justify-center gap-2"
@@ -237,22 +327,40 @@ const CourseDetails = () => {
   }
 
   function timeAgo(dateString: string) {
-    if (!dateString) return '';
-    const now = new Date();
-    const date = new Date(dateString);
-    const diff = (now.getTime() - date.getTime()) / 1000;
-    if (diff < 60) return 'الآن';
-    if (diff < 3600) return `منذ ${Math.floor(diff / 60)} دقيقة`;
-    if (diff < 86400) return `منذ ${Math.floor(diff / 3600)} ساعة`;
-    if (diff < 604800) return `منذ ${Math.floor(diff / 86400)} يوم`;
-    if (diff < 2592000) return `منذ ${Math.floor(diff / 604800)} أسبوع`;
-    if (diff < 31536000) return `منذ ${Math.floor(diff / 2592000)} شهر`;
-    return `منذ ${Math.floor(diff / 31536000)} سنة`;
+    if (!dateString) return 'غير محدد';
+
+    try {
+      const now = new Date();
+      const date = new Date(dateString);
+
+      if (isNaN(date.getTime())) {
+        return 'غير محدد';
+      }
+
+      const diff = (now.getTime() - date.getTime()) / 1000;
+
+      // Check if diff is valid
+      if (isNaN(diff) || diff < 0) {
+        return 'غير محدد';
+      }
+
+      if (diff < 60) return 'الآن';
+      if (diff < 3600) return `منذ ${Math.floor(diff / 60)} دقيقة`;
+      if (diff < 86400) return `منذ ${Math.floor(diff / 3600)} ساعة`;
+      if (diff < 604800) return `منذ ${Math.floor(diff / 86400)} يوم`;
+      if (diff < 2592000) return `منذ ${Math.floor(diff / 604800)} أسبوع`;
+      if (diff < 31536000) return `منذ ${Math.floor(diff / 2592000)} شهر`;
+      return `منذ ${Math.floor(diff / 31536000)} سنة`;
+    } catch (error) {
+      return 'غير محدد';
+    }
   }
 
+  const headerBg: string = useDominantColorBackground(
+    course?.image ? cleanMediaUrl(course.image) : defaultCourseImage,
+    "linear-gradient(to right, #1e4f94, #00f2ff)"
+  );
   const courseImage = course?.image ? cleanMediaUrl(course.image) : defaultCourseImage;
-  const headerBg = useDominantColorBackground(courseImage);
-
   const handleShare = async () => {
     if (!course || !courseId || isSharing) return; // منع التنفيذ إذا كان المشاركة جارية
     setIsSharing(true);
@@ -304,13 +412,13 @@ const CourseDetails = () => {
     );
   }
 
-  const chapters = course.chapters || [];
-  const totalMinutes = (course.chapters || []).reduce((acc, chapter) =>
+  // Use chapters from state instead of directly from course
+  const totalMinutes = chapters.reduce((acc, chapter) =>
     acc + (chapter.lectures?.reduce((sum, lec) => sum + parseMinutes(lec.timeLecture), 0) || 0), 0
   );
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    e.currentTarget.src = '/assets/images.jpeg';
+    e.currentTarget.src = defaultCourseImage;
   };
 
   return (
@@ -321,12 +429,12 @@ const CourseDetails = () => {
             <div className="md:w-1/3 flex justify-center">
               {course.videos ? (
                 <div className="relative w-full max-w-md rounded-xl overflow-hidden shadow-2xl">
-                  <video className="w-full h-48 md:h-64 object-cover" poster={course.image ? cleanMediaUrl(course.image) : ''}>
-                    <source src={cleanMediaUrl(course.videos)} type="video/mp4" />
+                  <video className="w-full h-48 md:h-64 object-cover" poster={previewUrl}>
+                    <source src={previewUrl} type="video/mp4" />
                   </video>
                   <button
                     className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-30 hover:bg-opacity-40 transition-all"
-                    onClick={() => navigate(`/courses/${courseId}/lecture/${course.chapters[0]?.lectures[0]?.id}`)}
+                    onClick={() => navigate(`/courses/${courseId}/lecture/${chapters[0]?.lectures[0]?.id}`)}
                     title="تحميل الملف"
                   >
                     <FiPlay className="text-4xl" />
@@ -363,7 +471,7 @@ const CourseDetails = () => {
               <div className="flex flex-wrap gap-4 text-sm">
                 <span className="flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full">
                   <FiUser className="text-white" />
-                  <span>المدرب: {teacher ? teacher.name : course.user || '-'}</span>
+                  <span>المدرب: {teacher?.name || course.user || '-'}</span>
                 </span>
                 <span className="flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full">
                   <FiGlobe className="text-white" />
@@ -378,7 +486,7 @@ const CourseDetails = () => {
               <div className="flex flex-wrap items-center gap-4 pt-2">
                 <div className="flex items-center gap-2 bg-white/10 px-4 py-1.5 rounded">
                   <MdOutlineVideoLibrary className="text-white" />
-                  <span>{course.chapters?.length || 0} محاضرة</span>
+                  <span>{chapters.length || 0} محاضرة</span>
                 </div>
                 <div className="flex items-center gap-2 bg-white/10 px-4 py-1.5 rounded">
                   <FiStar className="text-white" />
@@ -490,6 +598,11 @@ const CourseDetails = () => {
                                           {lec.is_watch && (
                                             <span className="mr-2 text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-300 px-2 py-0.5 rounded-full">
                                               تمت المشاهدة
+                                            </span>
+                                          )}
+                                          {isShownToVisitors && !isEnrolled && (
+                                            <span className="mr-2 text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                                              مجاني
                                             </span>
                                           )}
                                         </span>
@@ -649,7 +762,10 @@ const CourseDetails = () => {
                       to={`/teacher/${teacher.id}`}
                       className="inline-flex items-center justify-center px-4 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors"
                       onClick={(e) => {
-                        localStorage.setItem('breadcrumb_teacher_name', teacher.name);
+                        setBreadcrumbTeacher({
+                          name: teacher.name,
+                          id: teacher.id.toString()
+                        });
                       }}
                     >
                       عرض جميع كورسات المدرب
@@ -689,7 +805,7 @@ const CourseDetails = () => {
                     <span className="text-gray-600 dark:text-gray-300 flex items-center gap-2">
                       <FiBookOpen /> المحاضرات
                     </span>
-                    <span className="font-medium">{course.chapters?.length || 0}</span>
+                    <span className="font-medium">{chapters.length || 0}</span>
                   </li>
                   <li className="flex justify-between text-sm md:text-base">
                     <span className="text-gray-600 dark:text-gray-300 flex items-center gap-2">
@@ -708,7 +824,7 @@ const CourseDetails = () => {
                       <FiCalendar /> آخر تحديث
                     </span>
                     <span className="font-semibold text-primary">
-                      {timeAgo(course.updated_at || course.updatedAt)}
+                      {timeAgo(course.updated_at || course.updatedAt || course.created_at)}
                     </span>
                   </li>
                 </ul>
@@ -728,6 +844,7 @@ const CourseDetails = () => {
                           href={cleanMediaUrl(resource.file)}
                           download
                           className="text-blue-500 hover:text-blue-700"
+                          title={`تحميل ${resource.name}`}
                         >
                           <FiDownload />
                         </a>
@@ -778,6 +895,71 @@ const CourseDetails = () => {
         </div>
       </div>
 
+      {/* Teacher Section */}
+      {teacher && (
+        <div className="container max-w-6xl mx-auto px-4 pb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+            <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-6">عن المدرب</h3>
+            <div className="flex flex-col md:flex-row gap-6">
+              <div className="md:w-1/4 flex justify-center">
+                <div className="w-32 h-32 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
+                  {teacher.profile_photo_url ? (
+                    <img
+                      src={cleanMediaUrl(teacher.profile_photo_url)}
+                      alt={teacher.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <FiUser className="text-4xl text-gray-600 dark:text-gray-300" />
+                  )}
+                </div>
+              </div>
+              <div className="md:w-3/4 space-y-4">
+                <div>
+                  <h4 className="text-lg font-bold dark:text-gray-100">{teacher.name}</h4>
+                  <p className="text-gray-600 dark:text-gray-300">{teacher.title || 'مدرب محترف'}</p>
+                  <p className="text-gray-700 dark:text-gray-200 leading-relaxed">
+                    {teacher.email || ''}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex items-center gap-2">
+                    <FiUsers className="text-blue-500" />
+                    <span>{teacher.students_count || 0} طالب</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <FiBookOpen className="text-blue-500" />
+                    <span>{teacher.courses_count || 0} كورس</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <FiStar className="text-blue-500" />
+                    <span>التقييم: {teacher.rating || 'غير متاح'}</span>
+                  </div>
+                </div>
+
+                <p className="text-gray-700 dark:text-gray-200 leading-relaxed">
+                  {teacher.bio || 'لا يوجد وصف متاح للمدرب.'}
+                </p>
+
+                <Link
+                  to={`/teacher/${teacher.id}`}
+                  className="inline-flex items-center justify-center px-4 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors"
+                  onClick={(e) => {
+                    setBreadcrumbTeacher({
+                      name: teacher.name,
+                      id: teacher.id.toString()
+                    });
+                  }}
+                >
+                  عرض جميع كورسات المدرب
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <CourseEnrollVerificationModal
         isOpen={showVerificationModal}
         onClose={() => setShowVerificationModal(false)}
@@ -788,4 +970,4 @@ const CourseDetails = () => {
   );
 };
 
-export default CourseDetails;
+export default CourseDetails; 

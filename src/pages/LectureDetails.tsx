@@ -5,6 +5,8 @@ import { FaRegUserCircle } from 'react-icons/fa';
 import { apiBaseUrl } from '@/lib/utils';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { useAppSelector } from '@/hooks/useAppSelector';
+import useBreadcrumb from '@/hooks/useBreadcrumb';
+import useAuth from '@/hooks/useAuth';
 import Loading from '@/components/ui/Loading';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -17,7 +19,7 @@ function getWatchStatusText(status?: string) {
 }
 
 // دالة مساعدة لتحديث منطق عرض المحاضرات
-function renderLectureItem(lec: any, lectureId: string, courseId: string, enrollStatus: any, navigate: any) {
+function renderLectureItem(lec: any, lectureId: string, courseId: string, enrollStatus: any, navigate: any, setIsNavigating?: any) {
   const isEnrolled = enrollStatus && enrollStatus.status === 'joined';
   const isShownToVisitors = lec.show === 1;
   const canAccess = isEnrolled || isShownToVisitors;
@@ -32,6 +34,9 @@ function renderLectureItem(lec: any, lectureId: string, courseId: string, enroll
       onClick={() => {
         if (!canAccess) {
           return;
+        }
+        if (setIsNavigating) {
+          setIsNavigating(true);
         }
         navigate(`/courses/${courseId}/lecture/${lec.id}`);
       }}
@@ -52,6 +57,11 @@ function renderLectureItem(lec: any, lectureId: string, courseId: string, enroll
           : 'text-gray-600 dark:text-gray-300'
         }`}>
         {lec.name}
+        {isShownToVisitors && !isEnrolled && (
+          <span className="mr-2 text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 px-2 py-0.5 rounded-full">
+            مجاني
+          </span>
+        )}
       </span>
       {!canAccess && (
         <FiLock className="text-gray-400 dark:text-gray-500 text-sm" />
@@ -77,6 +87,7 @@ const LectureDetails = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [openDiscussionId, setOpenDiscussionId] = useState<string>('');
   const [visibleCount, setVisibleCount] = useState(5);
+  const [isNavigating, setIsNavigating] = useState(false);
   const isFirstLoad = React.useRef(true);
 
   const user = useAppSelector((state) => state.user.user);
@@ -88,51 +99,89 @@ const LectureDetails = () => {
 
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { setCourse: setBreadcrumbCourse, setLecture: setBreadcrumbLecture } = useBreadcrumb();
+  const { authService, getToken } = useAuth();
 
   useEffect(() => {
-    setLoading(true);
-    const token = localStorage.getItem('token');
-    const fetchWithAuth = (url: string) =>
-      fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-        .then(r => r.json());
-    Promise.all([
-      fetchWithAuth(`${apiBaseUrl}/api/showLecture/${courseId}/${lectureId}`),
-      fetchWithAuth(`${apiBaseUrl}/api/LectureDetails/${courseId}/${lectureId}`),
-      token ? fetchWithAuth(`${apiBaseUrl}/api/check-enroll/${courseId}`) : Promise.resolve(null),
-    ]).then(([lectureRes, courseRes, enrollRes]) => {
-      console.log('lectureRes.Lecture:', lectureRes.Lecture); // طباعة بيانات المحاضرة من الـ API
-      setLecture(lectureRes.Lecture); // هذا يحفظ is_watch القادم من الداتابيز
-      setCourse(courseRes.course);
-      setChapters(courseRes.course?.chapters || []);
-      setExpanded(courseRes.course?.chapters?.[0]?.id?.toString() || null);
+    if (isNavigating) {
+      return; // لا تحمل البيانات إذا كان المستخدم يتنقل
+    }
 
-      // Set enrollment status if available
-      if (enrollRes && enrollRes.status) {
-        setEnrollStatus(enrollRes.enrollStatus);
+    setLoading(true);
+
+    const loadData = async () => {
+      try {
+        const token = getToken();
+        const [lectureRes, courseRes, enrollRes] = await Promise.all([
+          authService.showLecture(courseId!, lectureId!),
+          authService.getLectureDetails(courseId!, lectureId!),
+          token ? authService.checkEnrollment(courseId!) : Promise.resolve(null),
+        ]);
+
+        if (lectureRes?.success && lectureRes.data) {
+          setLecture(lectureRes.data.Lecture);
+
+          // حفظ بيانات المحاضرة في Redux
+          if (lectureRes.data.Lecture?.name && lectureId) {
+            setBreadcrumbLecture({
+              name: lectureRes.data.Lecture.name,
+              id: lectureId
+            });
+          }
+        }
+
+        if (courseRes?.success && courseRes.data) {
+          setCourse(courseRes.data.course);
+          setChapters(courseRes.data.course?.chapters || []);
+          setExpanded(courseRes.data.course?.chapters?.[0]?.id?.toString() || null);
+
+          // حفظ بيانات الدورة في Redux
+          if (courseRes.data.course?.name && courseId) {
+            setBreadcrumbCourse({
+              name: courseRes.data.course.name,
+              id: courseId,
+              teacherName: courseRes.data.course.teacher?.name || courseRes.data.course.user,
+              teacherId: courseRes.data.course.teacher?.id?.toString()
+            });
+          }
+        }
+
+        if (enrollRes?.success && enrollRes.data) {
+          setEnrollStatus(enrollRes.data.enrollStatus);
+        }
+      } catch (error) {
+        console.error('Error loading lecture data:', error);
+      } finally {
+        setLoading(false);
       }
-      if (courseRes.course && courseRes.course.name) {
-        localStorage.setItem('breadcrumb_course_name', courseRes.course.name);
-      }
-      if (lectureRes.Lecture && lectureRes.Lecture.name) {
-        localStorage.setItem('breadcrumb_lecture_name', lectureRes.Lecture.name);
-      }
-    }).finally(() => setLoading(false));
-  }, [courseId, lectureId]);
+    };
+
+    loadData();
+  }, [courseId, lectureId, isNavigating]);
 
   const fetchDiscussions = async () => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${apiBaseUrl}/api/discussions/${courseId}/${lectureId}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    const data = await res.json();
-    let allDiscussions = data.discussions || [];
-    if (data.Mydiscussion) {
-      const exists = allDiscussions.some((d: any) => d.id === data.Mydiscussion.id);
-      if (!exists) {
-        allDiscussions = [data.Mydiscussion, ...allDiscussions];
+    try {
+      const result = await authService.getDiscussions(courseId!, lectureId!);
+
+      if (result.success && result.data) {
+        let allDiscussions = result.data.discussions || [];
+
+        if (result.data.Mydiscussion) {
+          const exists = allDiscussions.some((d: any) => d.id === result.data.Mydiscussion.id);
+          if (!exists) {
+            allDiscussions = [result.data.Mydiscussion, ...allDiscussions];
+          }
+        }
+
+        setDiscussions(allDiscussions);
+      } else {
+        console.warn('Failed to fetch discussions:', result.message);
+        setDiscussions([]);
       }
+    } catch (error) {
+      console.error('Error fetching discussions:', error);
+      setDiscussions([]);
     }
-    setDiscussions(allDiscussions);
   };
 
   useEffect(() => {
@@ -160,6 +209,13 @@ const LectureDetails = () => {
     }
   }, [discussions, openDiscussionId]);
 
+  // إعادة تعيين isNavigating عندما يكتمل التحميل
+  useEffect(() => {
+    if (!loading && isNavigating) {
+      setIsNavigating(false);
+    }
+  }, [loading, isNavigating]);
+
   useEffect(() => {
     if (!openDiscussionId) return;
     const idx = discussions.findIndex(d => String(d.id) === String(openDiscussionId));
@@ -185,26 +241,22 @@ const LectureDetails = () => {
     }
     setSending(true);
     try {
-      const token = localStorage.getItem('token');
-      const formData = new FormData();
-      formData.append('description', input);
-      formData.append('course_id', courseId!);
-      formData.append('teacher_id', course?.teacher?.id || '');
-      formData.append('lecture_id', lectureId!);
-      const res = await fetch(`${apiBaseUrl}/api/post-discussion`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
+      const result = await authService.postDiscussion({
+        description: input,
+        course_id: courseId!,
+        teacher_id: course?.teacher?.id || '',
+        lecture_id: lectureId!,
       });
-      const data = await res.json();
-      if (data.message === 'تم') {
+
+      if (result.success) {
         setSuccessMsg('تم إرسال الاستفسار بنجاح');
         setInput('');
         await fetchDiscussions();
       } else {
-        setErrorMsg('حدث خطأ أثناء الإرسال');
+        setErrorMsg(result.message || 'حدث خطأ أثناء الإرسال');
       }
     } catch (err) {
+      console.error('Error in handleSend:', err);
       setErrorMsg('حدث خطأ أثناء الإرسال');
     } finally {
       setSending(false);
@@ -218,23 +270,19 @@ const LectureDetails = () => {
     const discussion = discussions.find(d => d.id === discussionId);
     const conversationId = discussion?.conversation?.id;
     if (!conversationId) {
+      console.error('No conversation ID found for discussion:', discussionId);
       return;
     }
     setReplySending((prev) => ({ ...prev, [discussionId]: true }));
     try {
-      const token = localStorage.getItem('token');
-      const formData = new FormData();
-      formData.append('conversation_id', conversationId);
-      formData.append('message', reply);
-      formData.append('type', 'text');
-      const res = await fetch(`${apiBaseUrl}/api/messages`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
-      });
-      const responseData = await res.json();
-      setReplyInputs((prev) => ({ ...prev, [discussionId]: '' }));
-      await fetchDiscussions();
+      const result = await authService.sendMessage(conversationId, reply);
+
+      if (result.success) {
+        setReplyInputs((prev) => ({ ...prev, [discussionId]: '' }));
+        await fetchDiscussions();
+      } else {
+        console.error('Failed to send reply:', result.message);
+      }
     } catch (err) {
       console.error('Error sending reply:', err);
     } finally {
@@ -244,40 +292,30 @@ const LectureDetails = () => {
 
   const handleVideoEnd = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const formData = new FormData();
-      formData.append('lecture_id', lectureId!);
-      formData.append('course_id', courseId!);
-      formData.append('status', 'endWatch');
-      const res = await fetch(`${apiBaseUrl}/api/watch-Lecture`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
-      });
-      let data: any = null;
-      try {
-        data = await res.json();
-      } catch (e) {
-        data = { error: 'response is not JSON', status: res.status };
+      const result = await authService.markLectureWatched(lectureId!, courseId!);
+
+      if (result.success) {
+        setChapters((prevChapters) =>
+          prevChapters.map((chapter: any) => ({
+            ...chapter,
+            lectures: chapter.lectures.map((lec: any) =>
+              String(lec.id) === String(lectureId)
+                ? { ...lec, is_watch: { ...lec.is_watch, status: 'endWatch' } }
+                : lec
+            ),
+          }))
+        );
+
+        setLecture((prevLecture: any) =>
+          prevLecture ? { ...prevLecture, is_watch: { ...prevLecture.is_watch, status: 'endWatch' } } : prevLecture
+        );
+
+        toast({ title: 'نجاح', description: 'تم تسجيل مشاهدة المحاضرة بنجاح' });
+      } else {
+        toast({ title: 'خطأ', description: result.message || 'حدث خطأ أثناء تسجيل المشاهدة' });
       }
-
-      setChapters((prevChapters) =>
-        prevChapters.map((chapter: any) => ({
-          ...chapter,
-          lectures: chapter.lectures.map((lec: any) =>
-            String(lec.id) === String(lectureId)
-              ? { ...lec, is_watch: { ...lec.is_watch, status: 'endWatch' } }
-              : lec
-          ),
-        }))
-      );
-      // تحديث حالة المشاهدة في lecture نفسه
-      setLecture((prevLecture: any) =>
-        prevLecture ? { ...prevLecture, is_watch: { ...prevLecture.is_watch, status: 'endWatch' } } : prevLecture
-      );
-
-      toast({ title: 'نجاح', description: 'تم تسجيل مشاهدة المحاضرة بنجاح' });
-    } catch {
+    } catch (error) {
+      console.error('Error in handleVideoEnd:', error);
       toast({ title: 'خطأ', description: 'حدث خطأ أثناء تسجيل المشاهدة' });
     }
   };
@@ -288,7 +326,7 @@ const LectureDetails = () => {
   // طباعة بيانات lecture عند كل render
   console.log('lecture.is_watch?.status (render):', lecture?.is_watch?.status);
 
-  // Content restriction logic - show only first 2 lectures from first chapter if not enrolled or pending
+  // Content restriction logic - show lectures based on enrollment and show status
   const isEnrolled = enrollStatus && enrollStatus.status === 'joined';
   const isPending = enrollStatus && enrollStatus.status === 'pending';
   const shouldRestrictContent = !isEnrolled;
@@ -296,10 +334,10 @@ const LectureDetails = () => {
   // Filter chapters and lectures based on enrollment status
   const getFilteredChapters = () => {
     if (isEnrolled) {
-      return chapters; // Show all chapters and lectures
+      return chapters; // Show all chapters and lectures for enrolled users
     }
 
-    // Show all lectures but mark those with show === 0 as locked
+    // For non-enrolled users, show all lectures but mark those with show === 0 as locked
     return chapters.map(chapter => ({
       ...chapter,
       lectures: chapter.lectures || []
@@ -387,7 +425,7 @@ const LectureDetails = () => {
                         {chapter.lectures?.length === 0 && (
                           <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
                         )}
-                        {chapter.lectures?.map((lec) => renderLectureItem(lec, lectureId!, courseId!, enrollStatus, navigate))}
+                        {chapter.lectures?.map((lec) => renderLectureItem(lec, lectureId!, courseId!, enrollStatus, navigate, setIsNavigating))}
                       </ul>
                     </div>
                   </div>
@@ -415,7 +453,7 @@ const LectureDetails = () => {
                         {chapter.lectures?.length === 0 && (
                           <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
                         )}
-                        {chapter.lectures?.map((lec) => renderLectureItem(lec, lectureId!, courseId!, enrollStatus, navigate))}
+                        {chapter.lectures?.map((lec) => renderLectureItem(lec, lectureId!, courseId!, enrollStatus, navigate, setIsNavigating))}
                       </ul>
                     </div>
                   </div>
@@ -656,7 +694,7 @@ const LectureDetails = () => {
                       {chapter.lectures?.length === 0 && (
                         <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
                       )}
-                      {chapter.lectures?.map((lec) => renderLectureItem(lec, lectureId!, courseId!, enrollStatus, navigate))}
+                      {chapter.lectures?.map((lec) => renderLectureItem(lec, lectureId!, courseId!, enrollStatus, navigate, setIsNavigating))}
                     </ul>
                   </div>
                 </div>
@@ -684,7 +722,7 @@ const LectureDetails = () => {
                       {chapter.lectures?.length === 0 && (
                         <li className="text-xs text-gray-400 text-center py-2">لا يوجد محاضرات</li>
                       )}
-                      {chapter.lectures?.map((lec) => renderLectureItem(lec, lectureId!, courseId!, enrollStatus, navigate))}
+                      {chapter.lectures?.map((lec) => renderLectureItem(lec, lectureId!, courseId!, enrollStatus, navigate, setIsNavigating))}
                     </ul>
                   </div>
                 </div>

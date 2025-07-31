@@ -6,6 +6,7 @@ import TabsSkeleton from '@/components/ui/TabsSkeleton';
 import Pagination from '@/components/ui/pagination'; // استيراد المكون الجديد
 import { FiUsers, FiBookOpen, FiDollarSign, FiSearch } from 'react-icons/fi';
 import { motion } from 'framer-motion';
+import useAuth from '@/hooks/useAuth';
 
 interface Category {
   id: number;
@@ -43,21 +44,35 @@ const Courses = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const navigate = useNavigate();
+  const { getToken } = useAuth();
 
   useEffect(() => {
     setCategoriesLoading(true);
-    const token = localStorage.getItem('token');
+    const token = getToken();
     fetch(`${apiBaseUrl}/api/categories`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          if (res.status === 429) {
+            console.warn('Rate limit exceeded for categories');
+            return { data: [] };
+          }
+          throw new Error(`HTTP ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => setCategories(data.data || []))
+      .catch((error) => {
+        console.error('Error fetching categories:', error);
+        setCategories([]);
+      })
       .finally(() => setCategoriesLoading(false));
   }, []);
 
   const fetchCourses = async (page: number) => {
     setLoading(true);
-    const token = localStorage.getItem('token');
+    const token = getToken();
     let url = '';
 
     if (selectedCategory === 'all') {

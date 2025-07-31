@@ -14,6 +14,8 @@ import {
   FiBookOpen,
   FiWifi
 } from 'react-icons/fi';
+import useAuth from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
@@ -136,6 +138,15 @@ const Messenger = () => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [lectureCache, setLectureCache] = useState<Record<number, string>>({});
   const [courseCache, setCourseCache] = useState<Record<number, string>>({});
+  const { getToken, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  // Authentication check
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -175,7 +186,7 @@ const Messenger = () => {
   }, [selectedConv]);
 
   const fetchAuthUser = async () => {
-    const token = localStorage.getItem('token');
+    const token = getToken();
     if (!token) return;
     try {
       const res = await fetch(`${apiBaseUrl}/api/student`, {
@@ -189,7 +200,7 @@ const Messenger = () => {
 
   const fetchCourseDetails = async (courseId: number) => {
     if (!courseId) return;
-    const token = localStorage.getItem('token');
+    const token = getToken();
     try {
       const courseEndpoint = token ? 'course-detailsAuth' : 'course-details';
       const res = await fetch(`${apiBaseUrl}/api/${courseEndpoint}/${courseId}`, {
@@ -207,7 +218,7 @@ const Messenger = () => {
 
   const fetchLectureDetails = async (lectureId: number, courseId: number) => {
     if (!lectureId || !courseId) return;
-    const token = localStorage.getItem('token');
+    const token = getToken();
     try {
       const res = await fetch(`${apiBaseUrl}/api/showLecture/${courseId}/${lectureId}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -225,7 +236,7 @@ const Messenger = () => {
   const fetchConversations = async (page = 1) => {
     if (page === 1) setLoadingConvs(true);
     else setLoadingMore(true);
-    const token = localStorage.getItem('token');
+    const token = getToken();
     try {
       const res = await fetch(`${apiBaseUrl}/api/conversations?page=${page}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -274,7 +285,7 @@ const Messenger = () => {
     if (page === 1) setLoadingMsgs(true);
     else setLoadingMoreMsgs(true);
     setError('');
-    const token = localStorage.getItem('token');
+    const token = getToken();
     try {
       const res = await fetch(`${apiBaseUrl}/api/conversations/${convId}/messages?page=${page}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -312,7 +323,7 @@ const Messenger = () => {
 
   const markAsRead = async (convId: number) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = getToken();
       await fetch(`${apiBaseUrl}/api/conversations/${convId}/read`, {
         method: 'PUT',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -494,7 +505,7 @@ const Messenger = () => {
         setSending(true);
         setError('');
 
-        const token = localStorage.getItem('token');
+        const token = getToken();
         const formData = new FormData();
         formData.append('conversation_id', selectedConv.id.toString());
         if (messageText) formData.append('message', messageText);
@@ -586,7 +597,7 @@ const Messenger = () => {
     setSending(true);
     setError('');
 
-    const token = localStorage.getItem('token');
+    const token = getToken();
     const formData = new FormData();
     formData.append('conversation_id', selectedConv.id.toString());
     formData.append('message', messageText);
