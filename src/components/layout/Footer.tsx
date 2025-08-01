@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { FaFacebookF, FaTwitter, FaInstagram, FaLinkedinIn, FaYoutube, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 
 const Footer = () => {
@@ -21,7 +22,7 @@ const Footer = () => {
         <div className="md:hidden flex flex-col gap-6">
           {/* Logo Section */}
           <div className="flex flex-col items-center gap-3 mb-4">
-            <a href="/" className="flex items-center gap-2 mb-2">
+            <Link to="/" className="flex items-center gap-2 mb-2">
               <span className="font-extrabold text-lg md:text-xl tracking-tight drop-shadow-sm">
                 <span className="text-[#041665] dark:text-blue-200">ART</span>
                 <span className="bg-gradient-primary bg-clip-text text-transparent drop-shadow-glow">TEBU</span>
@@ -29,7 +30,7 @@ const Footer = () => {
               <span className="inline-flex items-center justify-center rounded-lg bg-gradient-to-tr from-blue-500 to-purple-500  shadow-md ring-2 ring-blue-400/40 ring-offset-2 ring-offset-white dark:ring-offset-gray-900 transition-all animate-glow">
                 <img src="/assests/art_tebu.jpg" alt="TEBU SOFT" className="rounded-lg object-cover h-8 w-8 md:h-10 md:w-10 drop-shadow-glow" />
               </span>
-            </a>
+            </Link>
             <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs text-center leading-relaxed">
               منصة تعليمية متخصصة في البرمجة والتقنية، تقدم كورسات وورش عمل عالية الجودة بإشراف نخبة من المدربين العرب.
             </p>
@@ -50,21 +51,21 @@ const Footer = () => {
             >
               <ul className="grid grid-cols-2 gap-3 p-4">
                 {[
-                  { href: '/', label: 'الرئيسية' },
-                  { href: '/courses', label: 'الدورات' },
-                  { href: '/articles', label: 'المقالات' },
-                  { href: '/services', label: 'الخدمات' },
-                  { href: '/portfolio', label: 'أعمالنا' },
-                  { href: '/contact', label: 'تواصل معنا' },
+                  { to: '/', label: 'الرئيسية' },
+                  { to: '/courses', label: 'الدورات' },
+                  { to: '/articles', label: 'المقالات' },
+                  { to: '/services', label: 'الخدمات' },
+                  { to: '/portfolio', label: 'أعمالنا' },
+                  { to: '/contact', label: 'تواصل معنا' },
                 ].map(link => (
-                  <li key={link.href} className="py-1">
-                    <a
-                      href={link.href}
+                  <li key={link.to} className="py-1">
+                    <Link
+                      to={link.to}
                       className="relative hover:text-blue-600 transition-colors after:absolute after:-bottom-1 after:right-0 after:w-0 after:h-0.5 after:bg-blue-600 after:transition-all after:duration-300 hover:after:w-full after:rounded"
                       style={{ paddingBottom: 2 }}
                     >
                       {link.label}
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -113,7 +114,7 @@ const Footer = () => {
         <div className="hidden md:flex flex-col gap-10 md:gap-0 md:flex-row md:justify-between md:items-start">
           {/* لوجو ووصف */}
           <div className="flex-1 flex flex-col items-center md:items-start mb-8 md:mb-0 gap-3">
-            <a href="/" className="flex items-center gap-2 mb-2">
+            <Link to="/" className="flex items-center gap-2 mb-2">
               <span className="inline-flex items-center justify-center rounded-lg bg-gradient-to-tr from-blue-500 to-purple-500  shadow-md ring-2 ring-blue-400/40 ring-offset-2 ring-offset-white dark:ring-offset-gray-900 transition-all animate-glow">
                 <img src="/assests/art_tebu.jpg" alt="TEBU SOFT" className="rounded-lg object-cover h-8 w-8 md:h-10 md:w-10 drop-shadow-glow" />
               </span>
@@ -121,7 +122,7 @@ const Footer = () => {
                 <span className="text-[#041665] dark:text-blue-200">ART</span>
                 <span className="bg-gradient-primary bg-clip-text text-transparent drop-shadow-glow">TEBU</span>
               </span>
-            </a>
+            </Link>
             <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs text-center md:text-right leading-relaxed">
               منصة تعليمية متخصصة في البرمجة والتقنية، تقدم كورسات وورش عمل عالية الجودة بإشراف نخبة من المدربين العرب.
             </p>
@@ -135,21 +136,21 @@ const Footer = () => {
             <h3 className="font-bold text-lg mb-2 text-blue-700 dark:text-blue-300">روابط سريعة</h3>
             <ul className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-6">
               {[
-                { href: '/', label: 'الرئيسية' },
-                { href: '/courses', label: 'الدورات' },
-                { href: '/articles', label: 'المقالات' },
-                { href: '/services', label: 'الخدمات' },
-                { href: '/portfolio', label: 'أعمالنا' },
-                { href: '/contact', label: 'تواصل معنا' },
+                { to: '/', label: 'الرئيسية' },
+                { to: '/courses', label: 'الدورات' },
+                { to: '/articles', label: 'المقالات' },
+                { to: '/services', label: 'الخدمات' },
+                { to: '/portfolio', label: 'أعمالنا' },
+                { to: '/contact', label: 'تواصل معنا' },
               ].map(link => (
-                <li key={link.href}>
-                  <a
-                    href={link.href}
+                <li key={link.to}>
+                  <Link
+                    to={link.to}
                     className="relative hover:text-blue-600 transition-colors after:absolute after:-bottom-1 after:right-0 after:w-0 after:h-0.5 after:bg-blue-600 after:transition-all after:duration-300 hover:after:w-full after:rounded"
                     style={{ paddingBottom: 2 }}
                   >
                     {link.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>

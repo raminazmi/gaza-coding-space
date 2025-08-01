@@ -9,49 +9,72 @@ import {
   refreshAccessToken
 } from '@/store/slices/authSlice';
 import { authService } from '@/services/authService';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 export const useAuth = () => {
   const dispatch = useAppDispatch();
   const auth = useAppSelector((state) => state.auth);
+  const initializedRef = useRef(false);
+  const userFetchedRef = useRef(false);
+  const syncRef = useRef(false);
 
-  // Initialize auth on app start
+  // Initialize auth only once on app start
   useEffect(() => {
-    dispatch(initializeAuth());
-    if (auth.isAuthenticated && !auth.user) {
+    if (!initializedRef.current && !auth.initialized) {
+      initializedRef.current = true;
+      dispatch(initializeAuth());
+    }
+  }, [dispatch, auth.initialized]);
+
+  // Fetch user data only once if authenticated and no user data
+  useEffect(() => {
+    if (auth.isAuthenticated && !auth.user && auth.accessToken && !userFetchedRef.current && !auth.isLoading) {
+      userFetchedRef.current = true;
       dispatch(fetchCurrentUser());
     }
-  }, [dispatch]);
+  }, [auth.isAuthenticated, auth.user, auth.accessToken, auth.isLoading, dispatch]);
 
-  // Initialize Firebase device token if authenticated
+  // Auto refresh token before expiry (only if not already refreshing)
   useEffect(() => {
-    if (auth.isAuthenticated && auth.accessToken) {
-      // Register device token for push notifications
-      import('@/firebase').then(({ registerDeviceToken }) => {
-        registerDeviceToken().catch(console.error);
-      }).catch(console.error);
-    }
-  }, [auth.isAuthenticated, auth.accessToken]);
-
-  // Auto refresh token before expiry
-  useEffect(() => {
-    if (!auth.tokenExpiry || !auth.isAuthenticated) return;
+    if (!auth.tokenExpiry || !auth.isAuthenticated || auth.isLoading) return;
 
     const timeUntilExpiry = auth.tokenExpiry - Date.now();
     const refreshTime = timeUntilExpiry - (5 * 60 * 1000); // Refresh 5 minutes before expiry
 
     if (refreshTime > 0) {
       const timer = setTimeout(() => {
-        if (auth.refreshToken) {
+        if (auth.refreshToken && !auth.isLoading) {
           dispatch(refreshAccessToken());
         }
       }, refreshTime);
 
       return () => clearTimeout(timer);
     }
-  }, [auth.tokenExpiry, auth.isAuthenticated, auth.refreshToken, dispatch]);
+  }, [auth.tokenExpiry, auth.isAuthenticated, auth.refreshToken, auth.isLoading, dispatch]);
+
+  // Sync authentication state between authService and Redux (only when needed)
+  useEffect(() => {
+    if (syncRef.current || auth.isLoading) return;
+    
+    const token = authService.getToken();
+    const serviceAuthenticated = !!token;
+    const reduxAuthenticated = auth.isAuthenticated;
+    
+    // إذا كان هناك token في authService ولكن Redux يقول غير مسجل
+    if (serviceAuthenticated && !reduxAuthenticated) {
+      syncRef.current = true;
+      dispatch(initializeAuth());
+    }
+    // إذا كان Redux يقول مسجل ولكن لا يوجد token في authService
+    else if (!serviceAuthenticated && reduxAuthenticated) {
+      syncRef.current = true;
+      dispatch(logout());
+    }
+  }, [auth.isAuthenticated, auth.isLoading, dispatch]);
 
   const login = useCallback(async (email: string, password: string) => {
+    userFetchedRef.current = false; // Reset user fetched flag
+    syncRef.current = false; // Reset sync flag
     const result = await dispatch(loginUser({ email, password }));
     return result;
   }, [dispatch]);
@@ -62,6 +85,8 @@ export const useAuth = () => {
     password: string;
     password_confirmation: string;
   }) => {
+    userFetchedRef.current = false; // Reset user fetched flag
+    syncRef.current = false; // Reset sync flag
     const result = await dispatch(registerUser(userData));
     return result;
   }, [dispatch]);
@@ -73,14 +98,28 @@ export const useAuth = () => {
         await authService.logout();
       }
     } catch (error) {
+      console.error('Logout API error:', error);
     } finally {
+      userFetchedRef.current = false; // Reset user fetched flag
+      initializedRef.current = false; // Reset initialized flag
+      syncRef.current = false; // Reset sync flag
+      
+      // Reset device token registration
+      import('@/firebase').then(({ resetDeviceTokenRegistration }) => {
+        resetDeviceTokenRegistration();
+      }).catch(console.error);
+      
       dispatch(logout());
     }
   }, [dispatch, auth.isAuthenticated]);
 
   const fetchUser = useCallback(() => {
-    return dispatch(fetchCurrentUser());
-  }, [dispatch]);
+    if (!userFetchedRef.current && !auth.isLoading) {
+      userFetchedRef.current = true;
+      return dispatch(fetchCurrentUser());
+    }
+    return Promise.resolve();
+  }, [dispatch, auth.isLoading]);
 
   const clearAuthError = useCallback(() => {
     dispatch(clearError());
@@ -90,10 +129,10 @@ export const useAuth = () => {
     return dispatch(refreshAccessToken());
   }, [dispatch]);
 
-  // Get current token
+  // Get current token (cached)
   const getToken = useCallback(() => {
-    return authService.getToken();
-  }, []);
+    return auth.accessToken || authService.getToken();
+  }, [auth.accessToken]);
 
   // Check if user can perform action (rate limiting)
   const canAttemptLogin = useCallback(() => {
@@ -115,14 +154,19 @@ export const useAuth = () => {
     return Math.max(0, remainingTime);
   }, [auth.loginAttempts, auth.lastLoginAttempt]);
 
+  // Optimized authentication check
+  const isAuthenticated = useCallback(() => {
+    return auth.isAuthenticated && !!getToken();
+  }, [auth.isAuthenticated, getToken]);
+
   return {
-    isAuthenticated: auth.isAuthenticated,
+    isAuthenticated: isAuthenticated(),
     user: auth.user,
     isLoading: auth.isLoading,
     error: auth.error,
     loginAttempts: auth.loginAttempts,
     tokenExpiry: auth.tokenExpiry,
-        login,
+    login,
     register,
     logout: logoutUser,
     fetchUser,

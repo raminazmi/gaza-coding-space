@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './store';
+import ApiMonitor from '@/components/ui/ApiMonitor';
 import Index from "./pages/Index";
 import Courses from "./pages/Courses";
 import Articles from "./pages/Articles";
@@ -23,7 +24,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import BottomNavigation from '@/components/ui/BottomNavigation';
 import LectureDetails from "./pages/LectureDetails";
 import ScrollToTop from "./ScrollToTop";
-import { useAppSelector } from "@/hooks/useAppSelector";
 import useAuth from '@/hooks/useAuth';
 import { useLocation } from "react-router-dom";
 import PortfolioDetails from "./pages/PortfolioDetails";
@@ -40,7 +40,9 @@ import TeacherCourses from "./pages/TeacherCourses";
 const queryClient = new QueryClient();
 
 function PrivateRoute() {
-  const isAuthenticated = useAppSelector((state) => state.user.isAuthenticated);
+  const { authService } = useAuth();
+  const isAuthenticated = authService.isAuthenticated();
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -48,9 +50,10 @@ function PrivateRoute() {
 }
 
 function PublicOnlyRoute() {
-  const isAuthenticated = useAppSelector((state) => state.user.isAuthenticated);
-  const { getToken } = useAuth();
+  const { authService, getToken } = useAuth();
+  const isAuthenticated = authService.isAuthenticated();
   const token = getToken();
+
   if (isAuthenticated && token) {
     return <Navigate to="/" replace />;
   }
@@ -76,13 +79,9 @@ function NoHeaderFooterLayout() {
   return <div className="min-h-screen flex flex-col" dir="rtl"><Outlet /></div>;
 }
 
-function ReduxLogger() {
-  const reduxUser = useAppSelector((state) => state.user.user);
-  const reduxAuth = useAppSelector((state) => state.user.isAuthenticated);
-  return null;
-}
-
 function App() {
+  const isDevelopment = import.meta.env.DEV;
+
   return (
     <Provider store={store}>
       <PersistGate loading={<div>Loading...</div>} persistor={persistor}>
@@ -90,9 +89,8 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <Sonner /> {/* Ensure Sonner is included for toasts */}
-            <BrowserRouter>
+            <BrowserRouter basename="/">
               <ScrollToTop />
-              <ReduxLogger />
               <Routes>
                 <Route element={<NoHeaderFooterLayout />}>
                   <Route element={<PublicOnlyRoute />}>
@@ -124,6 +122,8 @@ function App() {
                   <Route path="*" element={<NotFound />} />
                 </Route>
               </Routes>
+              {/* API Monitor for development debugging */}
+              {isDevelopment && <ApiMonitor isVisible={true} />}
             </BrowserRouter>
           </TooltipProvider>
         </QueryClientProvider>

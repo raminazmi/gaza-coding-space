@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { getEchoInstance, disconnectEcho } from '@/lib/echo';
-import { useAppSelector } from '@/hooks/useAppSelector';
 import { apiBaseUrl } from '@/lib/utils';
 import useAuth from '@/hooks/useAuth';
 

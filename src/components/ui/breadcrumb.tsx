@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { FiChevronLeft, FiMoreHorizontal } from "react-icons/fi"
+import { Link } from "react-router-dom";
 
 import { cn } from "@/lib/utils"
 
@@ -42,19 +43,29 @@ BreadcrumbItem.displayName = "BreadcrumbItem"
 const BreadcrumbLink = React.forwardRef<
   HTMLAnchorElement,
   React.ComponentPropsWithoutRef<"a"> & {
-    asChild?: boolean
+    asChild?: boolean;
+    to?: string;
   }
->(({ asChild, className, ...props }, ref) => {
-  const Comp = asChild ? Slot : "a"
-
+>(({ asChild, className, to, ...props }, ref) => {
+  if (asChild) {
+    return (
+      <Slot
+        ref={ref}
+        className={cn("transition-colors hover:text-foreground", className)}
+        {...props}
+      />
+    );
+  }
+  // دائماً استخدم Link، إذا لم يكن هناك to استخدم "/"
   return (
-    <Comp
-      ref={ref}
+    <Link
+      ref={ref as any}
       className={cn("transition-colors hover:text-foreground", className)}
+      to={to || "/"}
       {...props}
     />
-  )
-})
+  );
+});
 BreadcrumbLink.displayName = "BreadcrumbLink"
 
 const BreadcrumbPage = React.forwardRef<

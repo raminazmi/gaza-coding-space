@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '@/hooks';
 import useAuth from '@/hooks/useAuth';
@@ -17,12 +17,10 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator
 } from '@/components/ui/breadcrumb';
-import React from 'react';
-import { messaging, getToken, onMessage } from '../../firebase';
+import { messaging, onMessage } from '../../firebase';
 import { apiBaseUrl } from '@/lib/utils';
 import { toast } from '@/components/ui/sonner';
 import { FiUser, FiMoon, FiSun, FiMessageCircle, FiBell, FiBookOpen, FiLogOut } from 'react-icons/fi';
-import { getToken as getFirebaseToken } from 'firebase/messaging';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { useNotifications } from '@/hooks/useNotifications';
 
@@ -41,7 +39,12 @@ const Header = () => {
   const pathnames = location.pathname.split('/').filter(Boolean);
   const navigate = useNavigate();
 
-  const breadcrumbItems = React.useMemo(() => {
+  // تحسين عرض حالة المستخدم - استخدام useMemo لتجنب إعادة الحساب
+  const shouldShowUser = useMemo(() => {
+    return isAuthenticated && user && user.name;
+  }, [isAuthenticated, user]);
+
+  const breadcrumbItems = useMemo(() => {
     if (pathnames[0] === 'order-service') {
       return [
         { to: '/', label: 'الرئيسية' },
@@ -79,17 +82,18 @@ const Header = () => {
     ];
   }, [location.pathname, pathnames, breadcrumbData]);
 
-  const navLinks = [
+  const navLinks = useMemo(() => [
     { to: '/', label: 'الرئيسية' },
     { to: '/courses', label: 'الدورات' },
     { to: '/articles', label: 'المقالات' },
     { to: '/services', label: 'الخدمات' },
     { to: '/portfolio', label: 'أعمالنا' },
     { to: '/contact', label: 'تواصل معنا' },
-  ];
+  ], []);
 
-  const handleThemeToggle = () => dispatch(toggleTheme());
-  const handleLogout = async () => {
+  const handleThemeToggle = useCallback(() => dispatch(toggleTheme()), [dispatch]);
+
+  const handleLogout = useCallback(async () => {
     try {
       await userLogout();
       navigate('/');
@@ -98,34 +102,12 @@ const Header = () => {
       // في حالة فشل logout API، قم بتسجيل الخروج محلياً
       navigate('/');
     }
-  };
+  }, [userLogout, navigate]);
 
   const [notifOpen, setNotifOpen] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && 'Notification' in window && Notification.permission === 'granted') {
-      getFirebaseToken(messaging, { vapidKey: 'BCNx8QUEkYqJgAqYOA-IHPhfWLKfpe6s4Nz5EHmFUPu9EQ7iS70wV68ipFAkmjUTZmaAEdyE3B0whxZIAcAyjOQ' })
-        .then(async (currentToken) => {
-          if (currentToken) {
-            try {
-              const formData = new FormData();
-              formData.append('token', currentToken);
-
-              const result = await authService.apiCall('/api/device-tokens', {
-                method: 'POST',
-                body: formData,
-              }, true);
-
-              if (!result.success) {
-                console.error('Error sending device token:', result.message);
-              }
-            } catch (error) {
-              console.error('Error sending device token:', error);
-            }
-          }
-        })
-        .catch((err) => console.error('Error retrieving token:', err));
-
       const unsubscribe = onMessage(messaging, (payload) => {
         console.log('Message received:', payload);
         toast(
@@ -155,7 +137,6 @@ const Header = () => {
     if (unreadMessages > 0) {
       await markAllAsRead();
     }
-    navigate('/chat');
   };
 
   return (
@@ -163,7 +144,7 @@ const Header = () => {
       <header className="sticky top-0 z-50 w-full border-b bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl shadow-lg supports-[backdrop-filter]:bg-white/40 dark:supports-[backdrop-filter]:bg-gray-900/40 transition-all overflow-hidden" dir="rtl">
         <div className="relative z-10">
           <div className="container flex h-16 items-center justify-between px-2 md:px-6">
-            <a href="/" className="flex items-center gap-2 flex-row mx-0">
+            <Link to="/" className="flex items-center gap-2 flex-row mx-0">
               <span className="inline-flex items-center justify-center rounded-lg bg-gradient-to-tr from-blue-500 to-purple-500 shadow-md ring-2 ring-blue-400/40 ring-offset-2 ring-offset-white dark:ring-offset-gray-900 transition-all animate-glow">
                 <img src="/assests/art_tebu.jpg" alt="TEBU SOFT" className="rounded-lg object-cover h-8 w-8 md:h-10 md:w-10 drop-shadow-glow" />
               </span>
@@ -171,7 +152,7 @@ const Header = () => {
                 <span className="text-[#041665] dark:text-blue-200">ART</span>
                 <span className="bg-gradient-primary bg-clip-text text-transparent drop-shadow-glow">TEBU</span>
               </span>
-            </a>
+            </Link>
 
             <nav className="hidden md:flex items-center gap-4 flex-row-reverse">
               <ul className="flex flex-row gap-2 relative">
@@ -245,11 +226,7 @@ const Header = () => {
                     <Link
                       to="/notifications"
                       className="text-blue-600 hover:underline font-bold"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleNotifOpen(false);
-                        setTimeout(() => navigate('/notifications'), 100);
-                      }}
+                      onClick={() => handleNotifOpen(false)}
                     >
                       عرض المزيد
                     </Link>
@@ -260,16 +237,16 @@ const Header = () => {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <div className="flex items-center gap-2 cursor-pointer">
-                      {isAuthenticated && user ? (
+                      {shouldShowUser ? (
                         <div className="flex items-center gap-2 cursor-pointer bg-white dark:bg-gray-900 text-blue-700 dark:text-blue-200 font-semibold text-base rounded-xl px-1.5 py-1 shadow border border-blue-100 dark:border-blue-900 max-w-[160px] truncate transition-colors">
                           <span className="flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 w-7 h-7 overflow-hidden">
-                            {user.profile_photo_path || user.profile_photo_url ? (
-                              <img src={user.profile_photo_url || user.profile_photo_path} alt={user.name || 'مستخدم'} className="w-7 h-7 rounded-full object-cover" />
+                            {user && (user.profile_photo_path || user.profile_photo_url) ? (
+                              <img src={user.profile_photo_url || user.profile_photo_path} alt={user?.name || 'مستخدم'} className="w-7 h-7 rounded-full object-cover" />
                             ) : (
                               <FiUser className="h-5 w-5 text-white" />
                             )}
                           </span>
-                          {user.name ? user.name : 'مستخدم'}
+                          {user?.name}
                         </div>
                       ) : (
                         <span className="flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 w-9 h-9">
@@ -282,7 +259,7 @@ const Header = () => {
                     <DropdownMenuItem onClick={handleThemeToggle} className="flex justify-between items-center gap-2 hover:bg-purple-50/80 hover:text-purple-700 focus:bg-purple-100/80 focus:text-purple-800 transition-all">
                       {theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'} {theme === 'dark' ? <FiSun className="h-4 w-4" /> : <FiMoon className="h-4 w-4" />}
                     </DropdownMenuItem>
-                    {isAuthenticated && user ? (
+                    {shouldShowUser ? (
                       <>
                         <DropdownMenuItem asChild className="flex justify-between items-center gap-2 hover:bg-blue-50/80 hover:text-blue-700 focus:bg-blue-100/80 focus:text-blue-800 transition-all">
                           <Link to="/profile">
@@ -329,7 +306,7 @@ const Header = () => {
                       {idx === breadcrumbItems.length - 1 ? (
                         <BreadcrumbPage className="font-bold text-blue-700 dark:text-blue-200">{item.label}</BreadcrumbPage>
                       ) : (
-                        <BreadcrumbLink href={item.to} className="hover:text-blue-600 dark:hover:text-blue-300">{item.label}</BreadcrumbLink>
+                        <BreadcrumbLink to={item.to} className="hover:text-blue-600 dark:hover:text-blue-300">{item.label}</BreadcrumbLink>
                       )}
                     </BreadcrumbItem>
                     {idx < breadcrumbItems.length - 1 && <BreadcrumbSeparator><span className="text-gray-400 dark:text-gray-500 text-xs md:text-sm">/</span></BreadcrumbSeparator>}

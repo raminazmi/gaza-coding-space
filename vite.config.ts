@@ -20,7 +20,20 @@ export default defineConfig(({ mode }) => ({
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, '')
       }
-    }
+    },
+    // إضافة إعدادات لضمان عمل SPA بشكل صحيح
+    historyApiFallback: true,
+  },
+  // إضافة إعدادات للبناء
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          router: ['react-router-dom'],
+        },
+      },
+    },
   },
   resolve: {
     alias: {

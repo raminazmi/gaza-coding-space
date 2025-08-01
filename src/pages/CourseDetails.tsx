@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { apiBaseUrl } from '@/lib/utils';
 import {
@@ -14,6 +14,7 @@ import CourseEnrollVerificationModal from '@/components/ui/CourseEnrollVerificat
 import { useDominantColorBackground } from "@/hooks/useDominantColorBackground";
 import useBreadcrumb from '@/hooks/useBreadcrumb';
 import useAuth from '@/hooks/useAuth';
+import useApiCache from '@/hooks/useApiCache';
 import defaultCourseImage from '@public/assests/webapplication.webp';
 
 const CourseDetails = () => {
@@ -33,6 +34,7 @@ const CourseDetails = () => {
   const navigate = useNavigate();
   const { setCourse: setBreadcrumbCourse, setTeacher: setBreadcrumbTeacher } = useBreadcrumb();
   const { authService, getToken } = useAuth();
+  const { invalidateCourseCache } = useApiCache();
   const [isSharing, setIsSharing] = useState(false);
   const [requirements, setRequirements] = useState<any[]>([]);
   const [chapters, setChapters] = useState<any[]>([]);
@@ -64,10 +66,10 @@ const CourseDetails = () => {
         const isAuth = authService.isAuthenticated();
         const token = getToken();
 
-        // Fetch course details using authService
+        // Fetch course details using authService with caching
         const courseResult = await authService.getCourseDetails(courseId!);
 
-        // Fetch course requirements
+        // Fetch course requirements (also cached)
         const requirementsResult = await authService.apiCall(`/api/course-requirement/${courseId}`, {}, false);
 
         if (courseResult.success && courseResult.data) {
@@ -175,7 +177,7 @@ const CourseDetails = () => {
     }
   }, [enrollStatus, showVerificationModal, hasAutoShownModal]);
 
-  const toggleFavorite = async () => {
+  const toggleFavorite = useCallback(async () => {
     const token = getToken();
     if (!token) {
       navigate('/login');
@@ -191,12 +193,14 @@ const CourseDetails = () => {
       }
 
       setIsFavorite(!isFavorite);
+      // Invalidate course cache to reflect the new favorite status
+      invalidateCourseCache(courseId!);
     } catch (error) {
       console.error('Error toggling favorite:', error);
     }
-  };
+  }, [courseId, isFavorite, navigate, invalidateCourseCache, getToken]);
 
-  const handleEnroll = async () => {
+  const handleEnroll = useCallback(async () => {
     const token = getToken();
     if (!token) {
       navigate('/login');
@@ -216,12 +220,15 @@ const CourseDetails = () => {
         setShowVerificationModal(true);
         setIsPendingVerification(true);
       }
+
+      // Invalidate course cache after enrollment
+      invalidateCourseCache(courseId!);
     } catch (error) {
       console.error('Enrollment error:', error);
     } finally {
       setEnrollLoading(false);
     }
-  };
+  }, [courseId, navigate, invalidateCourseCache, getToken]);
 
   const handleVerificationSuccess = async () => {
     setShowVerificationModal(false);
@@ -905,4 +912,4 @@ const CourseDetails = () => {
   );
 };
 
-export default CourseDetails; 
+export default CourseDetails;

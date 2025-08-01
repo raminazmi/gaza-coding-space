@@ -4,7 +4,6 @@ import { FiChevronDown, FiChevronUp, FiSend, FiRefreshCw, FiLock } from 'react-i
 import { FaRegUserCircle } from 'react-icons/fa';
 import { apiBaseUrl } from '@/lib/utils';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
-import { useAppSelector } from '@/hooks/useAppSelector';
 import useBreadcrumb from '@/hooks/useBreadcrumb';
 import useAuth from '@/hooks/useAuth';
 import Loading from '@/components/ui/Loading';
@@ -15,6 +14,67 @@ function getWatchStatusText(status?: string) {
   if (status === 'inProgress') return 'قيد المشاهدة';
   if (status === 'notStarted') return 'لم تبدأ بعد';
   return 'لم تشاهد بعد';
+}
+
+// دالة مساعدة لمعالجة عرض محتوى الرسائل
+function renderMessageContent(content: any) {
+  try {
+    if (typeof content === 'string') {
+      return content;
+    }
+
+    if (typeof content === 'object' && content) {
+      // إذا كان object يحتوي على file_name (ملف مرفق)
+      if (content.file_name) {
+        return (
+          <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <div className="flex-1">
+              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                {content.file_name}
+              </div>
+              {content.file_size && (
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  {(content.file_size / 1024 / 1024).toFixed(2)} MB
+                </div>
+              )}
+            </div>
+            {content.file_path && (
+              <a
+                href={content.file_path}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-500 hover:text-blue-700 text-sm"
+              >
+                تحميل
+              </a>
+            )}
+          </div>
+        );
+      }
+
+      // إذا كان object يحتوي على نص في حقل آخر
+      if (content.text || content.message || content.content) {
+        return content.text || content.message || content.content;
+      }
+
+      // إذا كان object فارغ أو غير معروف
+      return 'رسالة غير مقروءة';
+    }
+
+    // إذا كان null أو undefined
+    if (content === null || content === undefined) {
+      return 'رسالة فارغة';
+    }
+
+    // إذا كان أي نوع آخر، نحاول تحويله إلى نص
+    return String(content);
+  } catch (error) {
+    console.error('Error rendering message content:', error);
+    return 'رسالة غير مقروءة';
+  }
 }
 
 function renderLectureItem(lec: any, lectureId: string, courseId: string, enrollStatus: any, navigate: any, setIsNavigating?: any) {
@@ -88,7 +148,7 @@ const LectureDetails = () => {
   const [isNavigating, setIsNavigating] = useState(false);
   const isFirstLoad = React.useRef(true);
 
-  const user = useAppSelector((state) => state.user.user);
+  const user = useAuth().user;
   const currentUserId = user?.id;
 
 
@@ -200,6 +260,21 @@ const LectureDetails = () => {
           return discussion;
         });
 
+        // معالجة آمنة للرسائل
+        allDiscussions = allDiscussions.map((discussion: any) => {
+          if (discussion.conversation?.messages) {
+            discussion.conversation.messages = discussion.conversation.messages.map((msg: any) => {
+              // التأكد من أن msg.body صالح للعرض
+              if (msg.body && typeof msg.body === 'object' && !msg.body.file_name && !msg.body.text && !msg.body.message && !msg.body.content) {
+                // إذا كان object غير معروف، نحوله إلى نص
+                msg.body = JSON.stringify(msg.body);
+              }
+              return msg;
+            });
+          }
+          return discussion;
+        });
+
         allDiscussions.sort((a: any, b: any) => {
           if (a.user?.id === currentUserId) return -1;
           if (b.user?.id === currentUserId) return 1;
@@ -211,6 +286,7 @@ const LectureDetails = () => {
         setDiscussions([]);
       }
     } catch (error) {
+      console.error('Error fetching discussions:', error);
       setDiscussions([]);
     }
   };
@@ -590,10 +666,18 @@ const LectureDetails = () => {
                           <div className="text-start flex-1">
                             <div className="flex justify-between items-start">
                               <div>
-                                <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">{discussion.description}</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                                  {typeof discussion.description === 'string'
+                                    ? discussion.description
+                                    : 'وصف غير متاح'
+                                  }
+                                </div>
                               </div>
                               <div className="text-xs text-gray-400">
-                                {new Date(discussion.created_at).toLocaleDateString('ar-EG')}
+                                {discussion.created_at
+                                  ? new Date(discussion.created_at).toLocaleDateString('ar-EG')
+                                  : 'تاريخ غير متاح'
+                                }
                               </div>
                             </div>
                           </div>
@@ -643,12 +727,17 @@ const LectureDetails = () => {
                                       )
                                     }
                                   >
-                                    <div className="text-sm">{msg.body}</div>
+                                    <div className="text-sm">
+                                      {renderMessageContent(msg.body)}
+                                    </div>
                                     <div className={`text-xs mt-1 ${msg.user?.id === currentUserId
                                       ? 'text-blue-600 dark:text-blue-200 text-left'
                                       : 'text-gray-500 dark:text-gray-300 text-right'
                                       }`}>
-                                      {msg.user?.id === currentUserId ? 'أنا' : (msg.user?.name || 'مستخدم')}
+                                      {msg.user?.id === currentUserId
+                                        ? 'أنا'
+                                        : (msg.user?.name || 'مستخدم')
+                                      }
                                     </div>
                                   </div>
 

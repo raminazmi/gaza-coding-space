@@ -15,6 +15,10 @@ const decryptToken = (encryptedToken: string): string => {
   }
 };
 
+// Cache للـ token لتقليل القراءة من storage
+let tokenCache: string | null = null;
+let tokenExpiryCache: number | null = null;
+
 interface AuthState {
   isAuthenticated: boolean;
   user: null | {
@@ -31,6 +35,7 @@ interface AuthState {
   error: string | null;
   loginAttempts: number;
   lastLoginAttempt: number | null;
+  initialized: boolean; // إضافة flag للتأكد من التهيئة
 }
 
 const initialState: AuthState = {
@@ -43,6 +48,7 @@ const initialState: AuthState = {
   error: null,
   loginAttempts: 0,
   lastLoginAttempt: null,
+  initialized: false,
 };
 
 // Async thunks
@@ -208,9 +214,14 @@ export const refreshAccessToken = createAsyncThunk(
   }
 );
 
-// Helper function to get stored token
+// Helper function to get stored token with cache
 export const getStoredToken = (): string | null => {
   try {
+    // Use cache if available and not expired
+    if (tokenCache && tokenExpiryCache && Date.now() < tokenExpiryCache) {
+      return tokenCache;
+    }
+
     // Try sessionStorage first (new method)
     let encryptedToken = sessionStorage.getItem('auth_token');
     let expiry = sessionStorage.getItem('token_expiry');
@@ -219,29 +230,53 @@ export const getStoredToken = (): string | null => {
     if (!encryptedToken) {
       const plainToken = localStorage.getItem('token');
       if (plainToken) {
-        return plainToken; // Return plain token from localStorage
+        // Cache the plain token
+        tokenCache = plainToken;
+        tokenExpiryCache = Date.now() + (24 * 60 * 60 * 1000); // Assume 24 hours
+        return plainToken;
       }
       return null;
     }
     
     if (!expiry) return null;
     
-    if (Date.now() > parseInt(expiry)) {
+    const expiryTime = parseInt(expiry);
+    if (Date.now() > expiryTime) {
       // Token expired
       sessionStorage.removeItem('auth_token');
       sessionStorage.removeItem('token_expiry');
+      tokenCache = null;
+      tokenExpiryCache = null;
       return null;
     }
     
-    return decryptToken(encryptedToken);
+    const decryptedToken = decryptToken(encryptedToken);
+    
+    // Cache the token
+    tokenCache = decryptedToken;
+    tokenExpiryCache = expiryTime;
+    
+    return decryptedToken;
   } catch {
     // Fallback to localStorage if sessionStorage fails
     try {
-      return localStorage.getItem('token');
+      const plainToken = localStorage.getItem('token');
+      if (plainToken) {
+        tokenCache = plainToken;
+        tokenExpiryCache = Date.now() + (24 * 60 * 60 * 1000);
+        return plainToken;
+      }
+      return null;
     } catch {
       return null;
     }
   }
+};
+
+// Function to clear token cache
+export const clearTokenCache = () => {
+  tokenCache = null;
+  tokenExpiryCache = null;
 };
 
 const authSlice = createSlice({
@@ -263,11 +298,20 @@ const authSlice = createSlice({
       state.error = null;
       state.loginAttempts = 0;
       state.lastLoginAttempt = null;
+      state.initialized = true;
       
       // Clear stored data
       sessionStorage.removeItem('auth_token');
       sessionStorage.removeItem('token_expiry');
       localStorage.removeItem('token'); // Clear old localStorage token
+      
+      // Clear cache
+      clearTokenCache();
+      
+      // Reset device token registration
+      import('@/firebase').then(({ resetDeviceTokenRegistration }) => {
+        resetDeviceTokenRegistration();
+      }).catch(console.error);
     },
     incrementLoginAttempts: (state) => {
       state.loginAttempts += 1;
@@ -290,18 +334,32 @@ const authSlice = createSlice({
       state.tokenExpiry = Date.now() + (24 * 60 * 60 * 1000);
       state.error = null;
       state.loginAttempts = 0;
+      state.initialized = true;
       
       // حفظ مشفر
       sessionStorage.setItem('auth_token', encryptToken(action.payload.token));
       sessionStorage.setItem('token_expiry', state.tokenExpiry.toString());
+      
+      // Update cache
+      tokenCache = action.payload.token;
+      tokenExpiryCache = state.tokenExpiry;
     },
     // التحقق من الـ token المحفوظ عند تحميل التطبيق
     initializeAuth: (state) => {
+      if (state.initialized) return; // لا تتهيأ مرة أخرى
+      
       const token = getStoredToken();
       if (token) {
         state.accessToken = token;
         state.isAuthenticated = true;
+        state.initialized = true;
+        // لا نجلب بيانات المستخدم هنا لأنها ستجلب في useEffect في useAuth
+      } else {
+        state.initialized = true;
       }
+    },
+    resetDeviceTokenRegistration: (state) => {
+      state.initialized = false; // Reset the flag to force re-registration
     },
   },
   extraReducers: (builder) => {
@@ -321,6 +379,11 @@ const authSlice = createSlice({
         state.error = null;
         state.loginAttempts = 0;
         state.lastLoginAttempt = null;
+        state.initialized = true;
+        
+        // Update cache
+        tokenCache = action.payload.accessToken;
+        tokenExpiryCache = action.payload.tokenExpiry;
         
         // Register device token after successful authentication
         import('@/firebase').then(({ registerDeviceToken }) => {
@@ -330,6 +393,9 @@ const authSlice = createSlice({
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
+        
+        // Clear cache on login failure
+        clearTokenCache();
       })
       
       // Register cases
@@ -344,6 +410,9 @@ const authSlice = createSlice({
       .addCase(registerUser.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
+        
+        // Clear cache on register failure
+        clearTokenCache();
       })
       
       // Fetch user cases
@@ -355,12 +424,19 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.user = null;
         state.accessToken = null;
+        
+        // Clear cache on fetch user failure
+        clearTokenCache();
       })
       
       // Refresh token cases
       .addCase(refreshAccessToken.fulfilled, (state, action) => {
         state.accessToken = action.payload.accessToken;
         state.tokenExpiry = action.payload.tokenExpiry;
+        
+        // Update cache
+        tokenCache = action.payload.accessToken;
+        tokenExpiryCache = action.payload.tokenExpiry;
       })
       .addCase(refreshAccessToken.rejected, (state) => {
         state.isAuthenticated = false;
@@ -368,6 +444,9 @@ const authSlice = createSlice({
         state.accessToken = null;
         state.refreshToken = null;
         state.tokenExpiry = null;
+        
+        // Clear cache
+        clearTokenCache();
       });
   },
 });
@@ -381,6 +460,7 @@ export const {
   updateUser,
   loginSuccess,
   initializeAuth,
+  resetDeviceTokenRegistration,
 } = authSlice.actions;
 
 export default authSlice.reducer;

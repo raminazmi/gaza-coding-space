@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAppSelector } from '@/hooks';
+import useAuth from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,9 @@ const Register = () => {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
-  const isAuthenticated = useAppSelector((state) => state.user.isAuthenticated);
+  const { authService } = useAuth();
+  const isAuthenticated = authService.isAuthenticated();
+
   useEffect(() => {
     if (isAuthenticated) {
       navigate('/');
@@ -40,7 +42,7 @@ const Register = () => {
         toast({ title: 'تم إرسال رمز التحقق إلى بريدك الإلكتروني', description: data.message });
         navigate('/verify', { state: { email } });
         setIsSubmitting(false);
-      return;
+        return;
       } else {
         toast({ title: 'خطأ', description: data.message || 'حدث خطأ أثناء التسجيل', variant: 'destructive' });
       }
@@ -51,7 +53,7 @@ const Register = () => {
   };
 
   return (
-    <div className="container flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900" dir="rtl">
+    <div className="container flex flex-col items-center justify-center min-h-screen" dir="rtl">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-10 w-full max-w-md mx-auto border border-gray-200 dark:border-gray-700">
         <div className="text-center mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">إنشاء حساب جديد</h1>

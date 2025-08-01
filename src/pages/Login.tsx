@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useAppSelector } from '@/hooks';
 import useAuth from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -70,7 +69,7 @@ const Login = () => {
   };
 
   return (
-    <div className="container flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900" dir="rtl">
+    <div className="container flex flex-col items-center justify-center min-h-screen" dir="rtl">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-10 w-full max-w-md mx-auto border border-gray-200 dark:border-gray-700">
         <div className="text-center mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">تسجيل الدخول</h1>

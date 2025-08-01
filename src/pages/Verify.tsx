@@ -82,6 +82,7 @@ const Verify = () => {
           try {
             const userResult = await authService.getCurrentUser();
             if (userResult.success && userResult.data) {
+              // Update user data in Redux store
               store.dispatch(loginSuccess({
                 user: userResult.data,
                 token
@@ -100,15 +101,14 @@ const Verify = () => {
             console.warn('Firebase device token registration failed:', error);
           }
 
-          // Show success message and navigate
-          toast({ title: 'تم التحقق بنجاح', description: 'تم تسجيل الدخول بنجاح' });
+          toast({
+            title: 'تم تسجيل الدخول بنجاح',
+            description: 'مرحباً بك في منصة غزة للبرمجة',
+          });
 
-          // Navigate and reload to ensure clean authentication state
-          setTimeout(() => {
-            navigate('/', { replace: true });
-          }, 500); // Give time for toast to show
+          navigate('/', { replace: true });
         } else {
-          throw new Error('لم يتم الحصول على token');
+          throw new Error('لم يتم استلام token صالح من الخادم');
         }
       } else {
         toast({
@@ -141,7 +141,7 @@ const Verify = () => {
   };
 
   return (
-    <div className="container min-h-screen py-16 bg-gray-100 flex items-center justify-center" dir="rtl">
+    <div className="container min-h-screen py-16 flex items-center justify-center" dir="rtl">
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md mx-auto border border-gray-200">
         <div className="text-center mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">تحقق من بريدك الإلكتروني</h1>

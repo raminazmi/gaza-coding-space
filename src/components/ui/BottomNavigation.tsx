@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { FiHome, FiBookOpen, FiFileText, FiBriefcase, FiLayers, FiMail, FiMenu, FiUser, FiSun, FiMoon, FiLogOut } from 'react-icons/fi';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { useAppSelector, useAppDispatch } from '@/hooks';
@@ -25,11 +25,16 @@ const BottomNavigation: React.FC = () => {
   const navigate = useNavigate();
   const { logout: userLogout, user, isAuthenticated } = useAuth();
 
-  const handleThemeToggle = () => {
-    dispatch(toggleTheme());
-  };
+  // تحسين عرض حالة المستخدم - استخدام useMemo لتجنب إعادة الحساب
+  const shouldShowUser = useMemo(() => {
+    return isAuthenticated && user && user.name;
+  }, [isAuthenticated, user]);
 
-  const handleLogout = async () => {
+  const handleThemeToggle = useCallback(() => {
+    dispatch(toggleTheme());
+  }, [dispatch]);
+
+  const handleLogout = useCallback(async () => {
     try {
       await userLogout();
       navigate('/');
@@ -38,12 +43,12 @@ const BottomNavigation: React.FC = () => {
       // في حالة فشل logout API، قم بتسجيل الخروج محلياً
       navigate('/');
     }
-  };
+  }, [userLogout, navigate]);
 
-  const isActive = (href: string) => {
+  const isActive = useCallback((href: string) => {
     if (href === '/') return location.pathname === '/';
     return location.pathname.startsWith(href);
-  };
+  }, [location.pathname]);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-900/95 border-t shadow z-50 flex justify-around py-0.5 md:hidden">
@@ -103,7 +108,7 @@ const BottomNavigation: React.FC = () => {
                 <FiUser className="h-5 w-5 text-white" />
               )}
             </span>
-            {user && user.name ? (
+            {shouldShowUser ? (
               <span className="max-w-[48px] truncate font-semibold text-[10px] text-foreground">{user.name}</span>
             ) : (
               'الحساب'
@@ -115,7 +120,7 @@ const BottomNavigation: React.FC = () => {
             {theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
             {theme === 'dark' ? <FiSun className="h-4 w-4" /> : <FiMoon className="h-4 w-4" />}
           </DropdownMenuItem>
-          {isAuthenticated && user ? (
+          {shouldShowUser ? (
             <>
               <DropdownMenuItem asChild className="flex justify-between items-center gap-2 hover:bg-purple-50/80 hover:text-purple-700 focus:bg-purple-100/80 focus:text-purple-800 transition-all">
                 <Link to="/profile">
