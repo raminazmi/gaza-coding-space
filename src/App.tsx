@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './store';
-import ApiMonitor from '@/components/ui/ApiMonitor';
 import Index from "./pages/Index";
 import Courses from "./pages/Courses";
 import Articles from "./pages/Articles";
@@ -80,8 +79,6 @@ function NoHeaderFooterLayout() {
 }
 
 function App() {
-  const isDevelopment = import.meta.env.DEV;
-
   return (
     <Provider store={store}>
       <PersistGate loading={<div>Loading...</div>} persistor={persistor}>
@@ -122,8 +119,6 @@ function App() {
                   <Route path="*" element={<NotFound />} />
                 </Route>
               </Routes>
-              {/* API Monitor for development debugging */}
-              {isDevelopment && <ApiMonitor isVisible={true} />}
             </BrowserRouter>
           </TooltipProvider>
         </QueryClientProvider>
