@@ -83,7 +83,7 @@ const OrderService = () => {
 
   return (
     <div className="min-h-screen pt-0 pb-16" dir="rtl">
-      <Card className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-10 w-full max-w-md mx-auto border border-gray-200 dark:border-gray-700">
+      <Card className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-10 w-full max-w-xl mx-auto border border-gray-200 dark:border-gray-700">
         <CardHeader className="text-center mb-4 p-0">
           <CardTitle className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">
             طلب خدمة

@@ -99,7 +99,7 @@ const Portfolio = () => {
                 <div className="p-4">
                   {/* Project Description */}
                   <div className="mb-4">
-                    <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm line-clamp-3">
+                    <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm line-clamp-2">
                       {project.description || 'لا يوجد وصف متاح لهذا المشروع'}
                     </p>
                   </div>

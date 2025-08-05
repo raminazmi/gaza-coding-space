@@ -122,39 +122,83 @@ const Services = () => {
                 <motion.div
                   key={service.id}
                   variants={item}
-                  className="bg-white dark:bg-gray-900 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden"
+                  className="bg-white dark:bg-gray-900 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group"
                 >
-                  <div className="p-4 flex flex-col h-full">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-4 mb-6">
-                        {service.image ? (
-                          <img
-                            src={service.image}
-                            alt={service.name}
-                            className="w-16 h-16 rounded-xl object-cover bg-gradient-primary"
-                          />
-                        ) : (
-                          <div className="w-16 h-16 bg-gradient-primary rounded-xl flex items-center justify-center">
-                            <FiStar className="h-8 w-8 text-white" />
-                          </div>
-                        )}
-                        <div>
-                          <h3 className="text-xl font-bold">{service.name}</h3>
-                          <p className="text-muted-foreground text-sm">{service.category_id ? getCategoryName(service.category_id) : ''}</p>
-                        </div>
+                  {/* Service Header */}
+                  <div className="relative overflow-hidden">
+                    <img
+                      src={service.image}
+                      alt={service.name}
+                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-2">
+                        <Link
+                          to={`/order-service?service_id=${service.id}`}
+                          className="bg-primary text-white p-2 rounded-full hover:bg-primary-hover transition-colors shadow-lg"
+                          title="طلب الخدمة"
+                        >
+                          <FiArrowLeft className="h-4 w-4" />
+                        </Link>
                       </div>
-
-                      <p className="text-muted-foreground mb-2 leading-relaxed">{service.small_description}</p>
-                      <p className="text-gray-700 dark:text-gray-300 mb-4 text-sm">{service.user_description}</p>
-                      <div className="mb-6 text-gray-600 dark:text-gray-300 whitespace-pre-line text-xs">{service.description}</div>
                     </div>
-                    <div className="border-t pt-3">
+                    <div className="absolute bottom-2 right-2 left-2">
+                      <h3 className="text-lg font-bold text-white mb-1">{service.name}</h3>
+                      <div className="flex items-center gap-2 text-white/90">
+                        <div className="w-2 h-2 bg-gradient-to-r from-primary to-secondary rounded-full"></div>
+                        <span className="text-xs">{service.category_id ? getCategoryName(service.category_id) : ''}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4">
+                    {/* Service Description */}
+                    <div className="mb-4">
+                      <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm line-clamp-3">
+                        {service.small_description}
+                      </p>
+                    </div>
+
+                    {/* User Description */}
+                    <div className="mb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-2 h-2 bg-gradient-to-r from-accent to-orange-500 rounded-full"></div>
+                        <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200">ماذا نقدم لك</h4>
+                      </div>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed line-clamp-2">
+                        {service.user_description}
+                      </p>
+                    </div>
+
+                    {/* Features Section */}
+                    <div className="mb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-2 h-2 bg-gradient-to-r from-primary to-secondary rounded-full"></div>
+                        <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200">المميزات</h4>
+                      </div>
+                      <div className="space-y-1">
+                        {service.description.split('.').slice(0, 3).map((feature, index) => (
+                          feature.trim() && (
+                            <div key={index} className="flex items-start gap-2">
+                              <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></div>
+                              <p className="text-gray-600 dark:text-gray-400 text-xs line-clamp-1">
+                                {feature.trim()}
+                              </p>
+                            </div>
+                          )
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Action Button */}
+                    <div className="flex justify-center">
                       <Link
                         to={`/order-service?service_id=${service.id}`}
-                        className="w-full inline-flex items-center justify-center gap-2 bg-gradient-primary text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300"
+                        className="inline-flex items-center gap-2 bg-gradient-primary text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg transition-all duration-300 text-sm"
                       >
                         اطلب الخدمة الآن
-                        <FiArrowLeft className="h-5 w-5" />
+                        <FiArrowLeft className="h-4 w-4" />
                       </Link>
                     </div>
                   </div>
