@@ -188,4 +188,13 @@ All colors MUST be HSL.
   .animate-bounce-up {
     animation: bounce-up 0.7s cubic-bezier(.4,0,.2,1) infinite;
   }
+  
+  /* Hide scrollbar but keep scroll functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Safari and Chrome */
+  }
 }

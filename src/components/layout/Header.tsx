@@ -63,6 +63,7 @@ const Header = () => {
           if (pathnames[0] === 'courses' && pathnames[2] === 'lecture' && originalIdx === 3) label = breadcrumbData.lectureName || label;
           if (pathnames[0] === 'articles' && originalIdx === 1) label = breadcrumbData.articleTitle || label;
           if (pathnames[0] === 'order-service' && originalIdx === 1) label = breadcrumbData.serviceName || label;
+          if (pathnames[0] === 'portfolio' && originalIdx === 1) label = breadcrumbData.portfolioTitle || label;
           if (label === 'courses') label = 'الدورات';
           if (label === 'my-courses') label = 'دوراتي';
           if (pathnames[0] === 'teacher' && originalIdx === 1) {
