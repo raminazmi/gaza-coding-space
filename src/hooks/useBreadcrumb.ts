@@ -8,7 +8,8 @@ import {
   setPortfolioData,
   clearBreadcrumbData,
   clearCourseData,
-  clearLectureData
+  clearLectureData,
+  clearServiceData
 } from '@/store/slices/breadcrumbSlice';
 
 export const useBreadcrumb = () => {
@@ -51,6 +52,10 @@ export const useBreadcrumb = () => {
     dispatch(clearLectureData());
   };
 
+  const clearService = () => {
+    dispatch(clearServiceData());
+  };
+
   return {
     // Data
     breadcrumbData,
@@ -71,6 +76,7 @@ export const useBreadcrumb = () => {
     clearAll,
     clearCourse,
     clearLecture,
+    clearService,
   };
 };
 

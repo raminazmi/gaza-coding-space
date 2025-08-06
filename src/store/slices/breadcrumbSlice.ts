@@ -69,6 +69,10 @@ export const breadcrumbSlice = createSlice({
     clearLectureData: (state) => {
       state.data.lectureName = undefined;
       state.data.lectureId = undefined;
+    },
+    clearServiceData: (state) => {
+      state.data.serviceName = undefined;
+      state.data.serviceId = undefined;
     }
   },
 });
@@ -82,7 +86,8 @@ export const {
   setPortfolioData,
   clearBreadcrumbData,
   clearCourseData,
-  clearLectureData
+  clearLectureData,
+  clearServiceData
 } = breadcrumbSlice.actions;
 
 export default breadcrumbSlice.reducer;

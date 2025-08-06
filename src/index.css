@@ -197,4 +197,36 @@ All colors MUST be HSL.
   .scrollbar-hide::-webkit-scrollbar {
     display: none;  /* Safari and Chrome */
   }
+  
+  /* Custom scrollbar for portfolio tabs */
+  .portfolio-tabs-scroll::-webkit-scrollbar {
+    height: 6px;
+  }
+  
+  .portfolio-tabs-scroll::-webkit-scrollbar-track {
+    background: rgba(156, 163, 175, 0.1);
+    border-radius: 3px;
+  }
+  
+  .portfolio-tabs-scroll::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.5);
+    border-radius: 3px;
+    transition: background 0.3s ease;
+  }
+  
+  .portfolio-tabs-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(156, 163, 175, 0.7);
+  }
+  
+  .dark .portfolio-tabs-scroll::-webkit-scrollbar-track {
+    background: rgba(75, 85, 99, 0.1);
+  }
+  
+  .dark .portfolio-tabs-scroll::-webkit-scrollbar-thumb {
+    background: rgba(75, 85, 99, 0.5);
+  }
+  
+  .dark .portfolio-tabs-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(75, 85, 99, 0.7);
+  }
 }

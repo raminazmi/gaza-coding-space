@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FaFacebookF, FaTwitter, FaInstagram, FaLinkedinIn, FaYoutube, FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { FaFacebookF, FaTwitter, FaInstagram, FaLinkedinIn, FaYoutube, FaChevronDown, FaChevronUp, FaXTwitter, FaTiktok } from 'react-icons/fa6';
 
 const Footer = () => {
   const [expandedSections, setExpandedSections] = useState({
@@ -87,11 +87,11 @@ const Footer = () => {
             >
               <div className="flex justify-center gap-4 p-4 flex-wrap">
                 {[
-                  { href: '#', icon: <FaFacebookF className="h-5 w-5" />, label: 'فيسبوك', color: 'hover:bg-blue-600' },
-                  { href: '#', icon: <FaTwitter className="h-5 w-5" />, label: 'تويتر', color: 'hover:bg-blue-400' },
-                  { href: '#', icon: <FaInstagram className="h-5 w-5" />, label: 'انستجرام', color: 'hover:bg-pink-500' },
+                  { href: 'https://www.facebook.com/profile.php?id=61579037212873', icon: <FaFacebookF className="h-5 w-5" />, label: 'فيسبوك', color: 'hover:bg-blue-600' },
+                  { href: 'https://x.com/ARTTEBU', icon: <FaXTwitter className="h-5 w-5" />, label: 'X', color: 'hover:bg-black' },
+                  { href: 'https://www.instagram.com/art_tebu?igsh=azlkMjA2b3Z3YXBk', icon: <FaInstagram className="h-5 w-5" />, label: 'انستجرام', color: 'hover:bg-pink-500' },
                   { href: '#', icon: <FaLinkedinIn className="h-5 w-5" />, label: 'لينكدإن', color: 'hover:bg-blue-800' },
-                  { href: '#', icon: <FaYoutube className="h-5 w-5" />, label: 'يوتيوب', color: 'hover:bg-red-600' },
+                  { href: 'https://www.tiktok.com/@arttebu', icon: <FaTiktok className="h-5 w-5" />, label: 'تيك توك', color: 'hover:bg-black' },
                 ].map(social => (
                   <a
                     key={social.label}
@@ -164,11 +164,11 @@ const Footer = () => {
             <h3 className="font-bold text-lg mb-2 text-blue-700 dark:text-blue-300">تابعنا على</h3>
             <div className="flex gap-3 md:gap-4">
               {[
-                { href: '#', icon: <FaFacebookF className="h-5 w-5" />, label: 'فيسبوك', color: 'hover:bg-blue-600' },
-                { href: '#', icon: <FaTwitter className="h-5 w-5" />, label: 'تويتر', color: 'hover:bg-blue-400' },
-                { href: '#', icon: <FaInstagram className="h-5 w-5" />, label: 'انستجرام', color: 'hover:bg-pink-500' },
+                { href: 'https://www.facebook.com/profile.php?id=61579037212873', icon: <FaFacebookF className="h-5 w-5" />, label: 'فيسبوك', color: 'hover:bg-blue-600' },
+                { href: 'https://x.com/ARTTEBU', icon: <FaXTwitter className="h-5 w-5" />, label: 'X', color: 'hover:bg-black' },
+                { href: 'https://www.instagram.com/art_tebu?igsh=azlkMjA2b3Z3YXBk', icon: <FaInstagram className="h-5 w-5" />, label: 'انستجرام', color: 'hover:bg-pink-500' },
                 { href: '#', icon: <FaLinkedinIn className="h-5 w-5" />, label: 'لينكدإن', color: 'hover:bg-blue-800' },
-                { href: '#', icon: <FaYoutube className="h-5 w-5" />, label: 'يوتيوب', color: 'hover:bg-red-600' },
+                { href: 'https://www.tiktok.com/@arttebu', icon: <FaTiktok className="h-5 w-5" />, label: 'تيك توك', color: 'hover:bg-black' },
               ].map(social => (
                 <a
                   key={social.label}

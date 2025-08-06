@@ -8,6 +8,7 @@ import { apiBaseUrl } from '@/lib/utils';
 import useAuth from '@/hooks/useAuth';
 import CourseCardSkeleton from '@/components/ui/CourseCardSkeleton';
 import ServiceCardSkeleton from '@/components/ui/ServiceCardSkeleton';
+import ServiceCard from '@/components/ui/ServiceCard';
 
 gsap.registerPlugin(ScrollTrigger, MotionPathPlugin);
 
@@ -75,6 +76,8 @@ const Index = () => {
   }, []);
 
   const [featuredServices, setFeaturedServices] = React.useState<any[]>([]);
+  const [categories, setCategories] = React.useState<any[]>([]);
+  
   React.useEffect(() => {
     fetch(`${apiBaseUrl}/api/service`)
       .then(res => res.json())
@@ -82,6 +85,21 @@ const Index = () => {
         setFeaturedServices((data.services || []).slice(0, 3));
       });
   }, []);
+
+  React.useEffect(() => {
+    fetch(`${apiBaseUrl}/api/categories`)
+      .then((res) => res.json())
+      .then((data) => setCategories(data.data || []))
+      .catch((error) => {
+        console.error('Error fetching categories:', error);
+        setCategories([]);
+      });
+  }, []);
+
+  const getCategoryName = (id: number | string) => {
+    const cat = categories.find((c: any) => String(c.id) === String(id));
+    return cat ? cat.name : id;
+  };
 
   const heroRef = useRef<HTMLDivElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
@@ -435,43 +453,17 @@ const Index = () => {
               نقدم مجموعة شاملة من الخدمات التقنية لتطوير مشاريعك
             </p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {featuredServices.length === 0
               ? [...Array(3)].map((_, i) => <ServiceCardSkeleton key={i} />)
               : featuredServices.map((service) => (
-                <div
+                <ServiceCard
                   key={service.id}
-                  className="bg-gray-50 dark:bg-gray-800 rounded-xl p-8 hover:shadow-lg transition-all duration-300 service-card transform-gpu hover:-translate-y-1"
-                >
-                  <div className="flex items-center gap-4 mb-6">
-                    {service.image ? (
-                      <img
-                        src={service.image}
-                        alt={service.name}
-                        className="w-12 h-12 rounded-lg object-cover floating"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center floating">
-                        <FiCheck className="h-6 w-6 text-white" />
-                      </div>
-                    )}
-                    <h3 className="text-xl font-bold">{service.name}</h3>
-                  </div>
-                  <p className="text-muted-foreground mb-6">{service.small_description || service.description}</p>
-                  <div className="flex items-center justify-between mt-6">
-                    <div>
-                      <span className="text-2xl font-bold text-primary">{service.price ? `$${service.price.starting}` : ''}</span>
-                      <span className="text-sm text-muted-foreground">{service.price ? 'ابتداءً من' : ''}</span>
-                    </div>
-                    <Link
-                      to="/services"
-                      className="inline-flex items-center gap-2 text-primary hover:text-primary-hover transition-colors"
-                    >
-                      المزيد من التفاصيل
-                      <FiArrowLeft className="h-4 w-4" />
-                    </Link>
-                  </div>
-                </div>
+                  service={service}
+                  onClick={() => navigate(`/services/${service.id}`)}
+                  showOrderButton={false}
+                  categoryName={getCategoryName(service.category_id)}
+                />
               ))}
           </div>
         </div>

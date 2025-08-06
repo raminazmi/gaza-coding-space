@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { FiExternalLink, FiArrowRight, FiTag, FiCalendar, FiChevronDown, FiChevronUp, FiInfo, FiImage, FiEye, FiX, FiArrowLeft } from 'react-icons/fi';
-import ProjectCardSkeleton from '@/components/ui/ProjectCardSkeleton';
+import ProjectDetailsSkeleton from '@/components/ui/ProjectDetailsSkeleton';
 import { apiBaseUrl } from '@/lib/utils';
 import { useAppDispatch } from '@/hooks';
 import { setPortfolioData } from '@/store/slices/breadcrumbSlice';
@@ -35,11 +35,7 @@ const PortfolioDetails = () => {
   }, [id, dispatch]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-hero" dir="rtl">
-        <ProjectCardSkeleton />
-      </div>
-    );
+    return <ProjectDetailsSkeleton />;
   }
 
   if (!project) {
@@ -84,7 +80,7 @@ const PortfolioDetails = () => {
                     : project.image
                   }
                   alt={project.name}
-                  className="w-full h-80 object-cover"
+                  className="w-full h-80 object-cover object-top"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
                 {project.project_url && (
@@ -157,7 +153,7 @@ const PortfolioDetails = () => {
                           <img 
                             src={img.image.startsWith('http') ? img.image : `${apiBaseUrl}/storage/${img.image}`} 
                             alt={`صورة ${project.name}`} 
-                            className="w-full h-40 object-cover group-hover:scale-110 transition-transform duration-300" 
+                            className="w-full h-40 object-cover object-top group-hover:scale-110 transition-transform duration-300" 
                           />
                           <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-300 flex items-center justify-center">
                             <FiEye className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

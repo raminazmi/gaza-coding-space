@@ -12,7 +12,7 @@ const navItems = [
   { label: 'المقالات', href: '/articles', icon: <FiFileText className="h-5 w-5 mb-0.5" /> },
   { label: 'الخدمات', href: '/services', icon: <FiBriefcase className="h-5 w-5 mb-0.5" /> },
   { label: 'أعمالنا', href: '/portfolio', icon: <FiLayers className="h-5 w-5 mb-0.5" /> },
-  { label: 'تواصل معنا', href: '/contact', icon: <FiMail className="h-5 w-5 mb-0.5" /> },
+  { label: 'ابدأ مشروعك', href: '/contact', icon: <FiMail className="h-5 w-5 mb-0.5" /> },
 ];
 
 const mainItems = navItems.slice(0, 3);
@@ -109,7 +109,7 @@ const BottomNavigation: React.FC = () => {
               )}
             </span>
             {shouldShowUser ? (
-              <span className="max-w-[48px] truncate font-semibold text-[10px] text-foreground">{user.name}</span>
+              <span className="max-w-[48px] truncate font-semibold text-[10px] text-foreground">{user?.name}</span>
             ) : (
               'الحساب'
             )}

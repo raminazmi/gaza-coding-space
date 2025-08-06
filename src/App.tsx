@@ -27,6 +27,7 @@ import useAuth from '@/hooks/useAuth';
 import { useLocation } from "react-router-dom";
 import PortfolioDetails from "./pages/PortfolioDetails";
 import OrderService from "./pages/OrderService";
+import ServiceDetails from "./pages/ServiceDetails";
 import Messenger from "./pages/Messenger";
 import ChatRoom from "./pages/ChatRoom";
 import ArticleDetails from "./pages/ArticleDetails";
@@ -112,6 +113,7 @@ function App() {
                   <Route path="/articles" element={<Articles />} />
                   <Route path="/articles/:id" element={<ArticleDetails />} />
                   <Route path="/services" element={<Services />} />
+                  <Route path="/services/:id" element={<ServiceDetails />} />
                   <Route path="/portfolio" element={<Portfolio />} />
                   <Route path="/portfolio/:id" element={<PortfolioDetails />} />
                   <Route path="/order-service" element={<OrderService />} />

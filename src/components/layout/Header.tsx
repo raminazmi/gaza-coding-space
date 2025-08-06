@@ -44,6 +44,8 @@ const Header = () => {
     return isAuthenticated && user && user.name;
   }, [isAuthenticated, user]);
 
+
+
   const breadcrumbItems = useMemo(() => {
     if (pathnames[0] === 'order-service') {
       return [
@@ -62,6 +64,9 @@ const Header = () => {
           if (pathnames[0] === 'courses' && originalIdx === 1) label = breadcrumbData.courseName || label;
           if (pathnames[0] === 'courses' && pathnames[2] === 'lecture' && originalIdx === 3) label = breadcrumbData.lectureName || label;
           if (pathnames[0] === 'articles' && originalIdx === 1) label = breadcrumbData.articleTitle || label;
+          if (pathnames[0] === 'services' && originalIdx === 1) {
+            label = breadcrumbData.serviceName || decodeURIComponent(segment);
+          }
           if (pathnames[0] === 'order-service' && originalIdx === 1) label = breadcrumbData.serviceName || label;
           if (pathnames[0] === 'portfolio' && originalIdx === 1) label = breadcrumbData.portfolioTitle || label;
           if (label === 'courses') label = 'الدورات';
@@ -75,7 +80,7 @@ const Header = () => {
           if (label === 'articles') label = 'المقالات';
           if (label === 'services') label = 'الخدمات';
           if (label === 'portfolio') label = 'أعمالنا';
-          if (label === 'contact') label = 'تواصل معنا';
+          if (label === 'contact') label = 'ابدأ مشروعك';
           if (label === 'chat') label = 'الدردشة';
           if (label === 'order-service') label = 'طلب خدمة';
           return { to, label };
@@ -89,7 +94,7 @@ const Header = () => {
     { to: '/articles', label: 'المقالات' },
     { to: '/services', label: 'الخدمات' },
     { to: '/portfolio', label: 'أعمالنا' },
-    { to: '/contact', label: 'تواصل معنا' },
+    { to: '/contact', label: 'ابدأ مشروعك' },
   ], []);
 
   const handleThemeToggle = useCallback(() => dispatch(toggleTheme()), [dispatch]);
