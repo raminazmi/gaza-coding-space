@@ -10,10 +10,10 @@ interface ServiceCardProps {
   categoryName?: string;
 }
 
-const ServiceCard: React.FC<ServiceCardProps> = ({ 
-  service, 
-  onClick, 
-  showDetails = true, 
+const ServiceCard: React.FC<ServiceCardProps> = ({
+  service,
+  onClick,
+  showDetails = true,
   showOrderButton = true,
   categoryName
 }) => {
@@ -24,24 +24,24 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
     >
       {/* Service Header */}
       <div className="relative overflow-hidden">
-                 <div className="w-full aspect-video bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center relative overflow-hidden border-b border-gray-200 dark:border-gray-700">
-           <img
-             src={service.image}
-             alt={service.name}
-                           className="w-full h-full object-cover object-top group-hover:scale-105 transition-all duration-300"
-             onError={(e) => {
-               e.currentTarget.style.display = 'none';
-               e.currentTarget.nextElementSibling?.classList.remove('hidden');
-             }}
-           />
-           <div className="hidden absolute inset-0 flex items-center justify-center">
-             <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-blue-500/20 rounded-full flex items-center justify-center shadow-lg">
-               <span className="text-2xl">🛠️</span>
-             </div>
-           </div>
-           {/* Subtle overlay for better text readability */}
-           <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-         </div>
+        <div className="w-full aspect-[4/3] bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center relative overflow-hidden border-b border-gray-200 dark:border-gray-700">
+          <img
+            src={service.image}
+            alt={service.name}
+            className="w-full h-full object-cover object-center group-hover:scale-105 transition-all duration-300"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+              e.currentTarget.nextElementSibling?.classList.remove('hidden');
+            }}
+          />
+          <div className="hidden absolute inset-0 flex items-center justify-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-blue-500/20 rounded-full flex items-center justify-center shadow-lg">
+              <span className="text-2xl">🛠️</span>
+            </div>
+          </div>
+          {/* Subtle overlay for better text readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
           <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-2">
@@ -62,7 +62,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
           <div className="flex items-center justify-between text-white/90">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-gradient-to-r from-primary to-secondary rounded-full"></div>
-                             <span className="text-xs">{categoryName || service.category_id || 'خدمة تقنية'}</span>
+              <span className="text-xs">{categoryName || service.category_id || 'خدمة تقنية'}</span>
             </div>
             {service.project_count > 0 && (
               <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-2 py-1 rounded-full">
