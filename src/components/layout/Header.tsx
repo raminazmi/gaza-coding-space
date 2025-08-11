@@ -20,9 +20,10 @@ import {
 import { messaging, onMessage } from '../../firebase';
 import { apiBaseUrl } from '@/lib/utils';
 import { toast } from '@/components/ui/sonner';
-import { FiUser, FiMoon, FiSun, FiMessageCircle, FiBell, FiBookOpen, FiLogOut } from 'react-icons/fi';
+import { FiUser, FiMoon, FiSun, FiMessageCircle, FiBell, FiBookOpen, FiLogOut, FiBookmark } from 'react-icons/fi';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useSavedArticles } from '@/hooks/useSavedArticles';
 
 interface ExternalToast {
   action?: { label: string; onClick: () => void };
@@ -35,11 +36,11 @@ const Header = () => {
   const { authService, getToken, logout: userLogout, user, isAuthenticated } = useAuth();
   const { unreadMessages, markAllAsRead, setUnreadMessages } = useUnreadMessages();
   const { notifications, notifCount, notifLoading, markNotificationsAsRead } = useNotifications();
+  const { savedCount } = useSavedArticles();
   const location = useLocation();
   const pathnames = location.pathname.split('/').filter(Boolean);
   const navigate = useNavigate();
 
-  // تحسين عرض حالة المستخدم - استخدام useMemo لتجنب إعادة الحساب
   const shouldShowUser = useMemo(() => {
     return isAuthenticated && user && user.name;
   }, [isAuthenticated, user]);
@@ -78,6 +79,7 @@ const Header = () => {
           if (label === 'profile') label = 'الملف الشخصي';
           if (label === 'notifications') label = 'الإشعارات';
           if (label === 'articles') label = 'المقالات';
+          if (label === 'saved-articles') label = 'المقالات المحفوظة';
           if (label === 'services') label = 'الخدمات';
           if (label === 'portfolio') label = 'أعمالنا';
           if (label === 'contact') label = 'ابدأ مشروعك';
@@ -277,6 +279,21 @@ const Header = () => {
                           <Link to="/my-courses">
                             دوراتي
                             <FiBookOpen className="h-4 w-4" />
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild className="flex justify-between items-center gap-2 hover:bg-green-50/80 hover:text-green-700 focus:bg-green-100/80 focus:text-green-800 transition-all">
+                          <Link to="/saved-articles">
+                            <div className="flex items-center justify-between w-full">
+                              <span>المقالات المحفوظة</span>
+                              <div className="flex items-center gap-2">
+                                {savedCount > 0 && (
+                                  <span className="bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                                    {savedCount}
+                                  </span>
+                                )}
+                                <FiBookmark className="h-4 w-4" />
+                              </div>
+                            </div>
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={handleLogout} className="flex justify-between items-center gap-2 hover:bg-red-50/80 hover:text-red-700 focus:bg-red-100/80 focus:text-red-800 transition-all">

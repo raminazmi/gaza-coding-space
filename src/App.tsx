@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
+import { HelmetProvider } from 'react-helmet-async';
+import { WebVitalsProvider } from './context/WebVitalsContext';
 import { store, persistor } from './store';
 import Index from "./pages/Index";
 import Courses from "./pages/Courses";
@@ -31,6 +33,7 @@ import ServiceDetails from "./pages/ServiceDetails";
 import Messenger from "./pages/Messenger";
 import ChatRoom from "./pages/ChatRoom";
 import ArticleDetails from "./pages/ArticleDetails";
+import SavedArticles from "./pages/SavedArticles";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import ProtectedLectureRoute from "./components/ProtectedLectureRoute";
@@ -81,51 +84,56 @@ function NoHeaderFooterLayout() {
 
 function App() {
   return (
-    <Provider store={store}>
-      <PersistGate loading={<div>Loading...</div>} persistor={persistor}>
-        <QueryClientProvider client={queryClient}>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner /> {/* Ensure Sonner is included for toasts */}
-            <BrowserRouter basename="/">
-              <ScrollToTop />
-              <Routes>
-                <Route element={<NoHeaderFooterLayout />}>
-                  <Route element={<PublicOnlyRoute />}>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Register />} />
-                    <Route path="/verify" element={<Verify />} />
-                  </Route>
-                </Route>
-                <Route element={<DefaultLayout />}>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/courses" element={<Courses />} />
-                  <Route path="/courses/:id" element={<CourseDetails />} />
-                  <Route element={<PrivateRoute />}>
-                    <Route path="/my-courses" element={<MyCourses />} />
-                    <Route path="/teacher/:id" element={<TeacherCourses />} />
-                    <Route path="/courses/:courseId/lecture/:lectureId" element={<LectureDetails />} />
-                    <Route path="/chat" element={<Messenger />} />
-                    <Route path="/chat/:id" element={<ChatRoom />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/notifications" element={<Notifications />} />
-                  </Route>
-                  <Route path="/articles" element={<Articles />} />
-                  <Route path="/articles/:id" element={<ArticleDetails />} />
-                  <Route path="/services" element={<Services />} />
-                  <Route path="/services/:id" element={<ServiceDetails />} />
-                  <Route path="/portfolio" element={<Portfolio />} />
-                  <Route path="/portfolio/:id" element={<PortfolioDetails />} />
-                  <Route path="/order-service" element={<OrderService />} />
-                  <Route path="/contact" element={<Contact />} />
-                  <Route path="*" element={<NotFound />} />
-                </Route>
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
-        </QueryClientProvider>
-      </PersistGate>
-    </Provider>
+    <HelmetProvider>
+      <WebVitalsProvider>
+        <Provider store={store}>
+          <PersistGate loading={<div>Loading...</div>} persistor={persistor}>
+            <QueryClientProvider client={queryClient}>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner /> {/* Ensure Sonner is included for toasts */}
+                <BrowserRouter basename="/">
+                  <ScrollToTop />
+                  <Routes>
+                    <Route element={<NoHeaderFooterLayout />}>
+                      <Route element={<PublicOnlyRoute />}>
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/register" element={<Register />} />
+                        <Route path="/verify" element={<Verify />} />
+                      </Route>
+                    </Route>
+                    <Route element={<DefaultLayout />}>
+                      <Route path="/" element={<Index />} />
+                      <Route path="/courses" element={<Courses />} />
+                      <Route path="/courses/:id" element={<CourseDetails />} />
+                      <Route element={<PrivateRoute />}>
+                        <Route path="/my-courses" element={<MyCourses />} />
+                        <Route path="/teacher/:id" element={<TeacherCourses />} />
+                        <Route path="/courses/:courseId/lecture/:lectureId" element={<LectureDetails />} />
+                        <Route path="/chat" element={<Messenger />} />
+                        <Route path="/chat/:id" element={<ChatRoom />} />
+                        <Route path="/profile" element={<Profile />} />
+                        <Route path="/notifications" element={<Notifications />} />
+                      </Route>
+                      <Route path="/articles" element={<Articles />} />
+                      <Route path="/articles/:id" element={<ArticleDetails />} />
+                      <Route path="/saved-articles" element={<SavedArticles />} />
+                      <Route path="/services" element={<Services />} />
+                      <Route path="/services/:id" element={<ServiceDetails />} />
+                      <Route path="/portfolio" element={<Portfolio />} />
+                      <Route path="/portfolio/:id" element={<PortfolioDetails />} />
+                      <Route path="/order-service" element={<OrderService />} />
+                      <Route path="/contact" element={<Contact />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Route>
+                  </Routes>
+                </BrowserRouter>
+              </TooltipProvider>
+            </QueryClientProvider>
+          </PersistGate>
+        </Provider>
+      </WebVitalsProvider>
+    </HelmetProvider>
   );
 }
 

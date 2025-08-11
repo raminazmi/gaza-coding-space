@@ -1,10 +1,11 @@
 import React, { useMemo, useCallback } from 'react';
-import { FiHome, FiBookOpen, FiFileText, FiBriefcase, FiLayers, FiMail, FiMenu, FiUser, FiSun, FiMoon, FiLogOut } from 'react-icons/fi';
+import { FiHome, FiBookOpen, FiFileText, FiBriefcase, FiLayers, FiMail, FiMenu, FiUser, FiSun, FiMoon, FiLogOut, FiBookmark } from 'react-icons/fi';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { useAppSelector, useAppDispatch } from '@/hooks';
 import { toggleTheme } from '@/store/slices/themeSlice';
 import useAuth from '@/hooks/useAuth';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useSavedArticles } from '@/hooks/useSavedArticles';
 
 const navItems = [
   { label: 'الرئيسية', href: '/', icon: <FiHome className="h-5 w-5 mb-0.5" /> },
@@ -24,6 +25,7 @@ const BottomNavigation: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout: userLogout, user, isAuthenticated } = useAuth();
+  const { savedCount } = useSavedArticles();
 
   // تحسين عرض حالة المستخدم - استخدام useMemo لتجنب إعادة الحساب
   const shouldShowUser = useMemo(() => {
@@ -132,6 +134,21 @@ const BottomNavigation: React.FC = () => {
                 <Link to="/my-courses">
                   دوراتي
                   <FiBookOpen className="h-4 w-4" />
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="flex justify-between items-center gap-2 hover:bg-green-50/80 hover:text-green-700 focus:bg-green-100/80 focus:text-green-800 transition-all">
+                <Link to="/saved-articles">
+                  <div className="flex items-center justify-between w-full">
+                    <span>المحفوظات</span>
+                    <div className="flex items-center gap-2">
+                      {savedCount > 0 && (
+                        <span className="bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[16px] text-center">
+                          {savedCount}
+                        </span>
+                      )}
+                      <FiBookmark className="h-4 w-4" />
+                    </div>
+                  </div>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleLogout} className="flex justify-between items-center gap-2 hover:bg-purple-50/80 hover:text-purple-700 focus:bg-purple-100/80 focus:text-purple-800 transition-all">

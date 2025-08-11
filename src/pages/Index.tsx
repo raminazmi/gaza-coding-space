@@ -9,6 +9,7 @@ import useAuth from '@/hooks/useAuth';
 import CourseCardSkeleton from '@/components/ui/CourseCardSkeleton';
 import ServiceCardSkeleton from '@/components/ui/ServiceCardSkeleton';
 import ServiceCard from '@/components/ui/ServiceCard';
+import SEO from '@/components/SEO';
 
 gsap.registerPlugin(ScrollTrigger, MotionPathPlugin);
 
@@ -77,7 +78,7 @@ const Index = () => {
 
   const [featuredServices, setFeaturedServices] = React.useState<any[]>([]);
   const [categories, setCategories] = React.useState<any[]>([]);
-  
+
   React.useEffect(() => {
     fetch(`${apiBaseUrl}/api/service`)
       .then(res => res.json())
@@ -259,6 +260,13 @@ const Index = () => {
 
   return (
     <div className="" dir="rtl">
+      <SEO
+        title="منصة التعليم التقني الرائدة"
+        description="ART TEBU - منصة رائدة في التعليم التقني والبرمجة. تعلم البرمجة، تطوير الويب، الذكاء الاصطناعي، والتطبيقات المحمولة مع خبراء معتمدين."
+        keywords="تعليم البرمجة, دورات البرمجة, تطوير الويب, الذكاء الاصطناعي, التطبيقات المحمولة, JavaScript, React, Python, تعليم تقني"
+        type="website"
+        image="/assests/art_tebu.jpg"
+      />
       <section className="relative overflow-hidden bg-gradient-hero pb-20 pt-14 md:pb-20 md:pt-6" ref={heroRef}>
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-1/3 -right-1/4 w-[800px] h-[800px] bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-full blur-3xl floating"></div>

@@ -1,0 +1,12 @@
+# Security Policy
+Contact: mailto:security@arttebu.com
+Expires: 2025-12-31T23:59:59.000Z
+Acknowledgments: https://arttebu.com/security/acknowledgments
+Preferred-Languages: ar, en
+Canonical: https://arttebu.com/.well-known/security.txt
+
+# Bug Bounty Information
+Policy: https://arttebu.com/security/policy
+
+# Hiring Information
+Hiring: https://arttebu.com/careers

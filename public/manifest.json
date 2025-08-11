@@ -1,0 +1,106 @@
+{
+    "name": "ART TEBU - منصة التعليم التقني الرائدة",
+    "short_name": "ART TEBU",
+    "description": "منصة رائدة في التعليم التقني والبرمجة. تعلم البرمجة، تطوير الويب، الذكاء الاصطناعي، والتطبيقات المحمولة مع خبراء معتمدين.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#3B82F6",
+    "orientation": "portrait-primary",
+    "scope": "/",
+    "lang": "ar",
+    "dir": "rtl",
+    "categories": [
+        "education",
+        "programming",
+        "technology"
+    ],
+    "icons": [
+        {
+            "src": "/favicon.ico",
+            "sizes": "16x16 32x32",
+            "type": "image/x-icon"
+        },
+        {
+            "src": "/assests/art_tebu.jpg",
+            "sizes": "192x192",
+            "type": "image/jpeg",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/assests/art_tebu.jpg",
+            "sizes": "512x512",
+            "type": "image/jpeg",
+            "purpose": "any"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/assests/art_tebu.jpg",
+            "sizes": "1280x720",
+            "type": "image/jpeg",
+            "form_factor": "wide"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "الدورات",
+            "short_name": "دورات",
+            "description": "تصفح جميع الدورات المتاحة",
+            "url": "/courses",
+            "icons": [
+                {
+                    "src": "/assests/art_tebu.jpg",
+                    "sizes": "96x96"
+                }
+            ]
+        },
+        {
+            "name": "المقالات",
+            "short_name": "مقالات",
+            "description": "اقرأ أحدث المقالات التقنية",
+            "url": "/articles",
+            "icons": [
+                {
+                    "src": "/assests/art_tebu.jpg",
+                    "sizes": "96x96"
+                }
+            ]
+        },
+        {
+            "name": "الخدمات",
+            "short_name": "خدمات",
+            "description": "تصفح الخدمات المتاحة",
+            "url": "/services",
+            "icons": [
+                {
+                    "src": "/assests/art_tebu.jpg",
+                    "sizes": "96x96"
+                }
+            ]
+        },
+        {
+            "name": "تواصل معنا",
+            "short_name": "تواصل",
+            "description": "تواصل مع فريق ART TEBU",
+            "url": "/contact",
+            "icons": [
+                {
+                    "src": "/assests/art_tebu.jpg",
+                    "sizes": "96x96"
+                }
+            ]
+        }
+    ],
+    "related_applications": [],
+    "prefer_related_applications": false,
+    "edge_side_panel": {
+        "preferred_width": 400
+    },
+    "protocol_handlers": [
+        {
+            "protocol": "mailto",
+            "url": "/contact?email=%s"
+        }
+    ]
+}

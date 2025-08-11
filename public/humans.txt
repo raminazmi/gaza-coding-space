@@ -1,0 +1,23 @@
+# Humans.txt file
+# The humans responsible & technology colophon
+
+/* TEAM */
+    Developer: Gaza Coding Space
+    Contact: info@arttebu.com
+    Twitter: @arttebu
+    From: Gaza, Palestine
+
+/* THANKS */
+    Special thanks to the open source community
+    React, TypeScript, Tailwind CSS communities
+
+/* SITE */
+    Last update: 2024/12/22
+    Language: Arabic / English
+    Doctype: HTML5
+    IDE: Visual Studio Code
+    Components: React, TypeScript
+    Styling: Tailwind CSS
+    Animation: Framer Motion
+    Build: Vite
+    Hosting: Netlify

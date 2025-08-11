@@ -5,6 +5,7 @@ import ArticleCardSkeleton from '@/components/ui/ArticleCardSkeleton';
 import Pagination from '@/components/ui/pagination'; // استيراد مكون الترقيم
 import { motion } from 'framer-motion'; // استيراد framer-motion
 import { apiBaseUrl } from '@/lib/utils';
+import SEO from '@/components/SEO';
 
 const Articles = () => {
   const [articles, setArticles] = useState<any[]>([]);
@@ -84,6 +85,12 @@ const Articles = () => {
 
   return (
     <div className="min-h-screen pt-0 pb-16" dir="rtl">
+      <SEO
+        title="المقالات العلمية والتقنية"
+        description="اكتشف أحدث المقالات والدروس البرمجية والتقنية. تعلم من خبراء في البرمجة، تطوير الويب، الذكاء الاصطناعي والتقنيات الحديثة."
+        keywords="مقالات البرمجة, دروس تقنية, مقالات علمية, برمجة, تطوير الويب, ذكاء اصطناعي, تقنيات حديثة"
+        type="website"
+      />
       <div className="container mx-auto px-4">
         <div className="text-center mb-8">
           <h1 className="h1 bg-gradient-primary bg-clip-text text-transparent drop-shadow-glow">
@@ -119,53 +126,59 @@ const Articles = () => {
               animate="show"
             >
               {filteredArticles.map((article) => (
-                <motion.article
-                  key={article.id}
-                  variants={item}
-                  className="bg-white dark:bg-gray-900 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col h-full"
-                >
-                  <div className="flex-1">
-                    <div className="relative">
-                      <img
-                        src={article.image}
-                        alt={article.name}
-                        className="w-full h-48 object-cover"
-                      />
-                      {article.category_id && (
-                        <div className="absolute top-4 right-4 bg-primary text-white px-3 py-1 rounded-full text-xs font-semibold">
-                          {getCategoryName(article.category_id)}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="p-4">
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                        <div className="flex items-center gap-1">
-                          <FiCalendar className="h-4 w-4" />
-                          <span>{article.created_at ? article.created_at.split('T')[0] : ''}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <FiUser className="h-4 w-4" />
-                          <span>{article.created_by || ''}</span>
+                <Link key={article.id} to={`/articles/${article.id}`} className="block">
+                  <motion.article
+                    variants={item}
+                    className="bg-white dark:bg-gray-900 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col h-full group cursor-pointer"
+                  >
+                    <div className="flex-1">
+                      <div className="relative overflow-hidden">
+                        <img
+                          src={article.image}
+                          alt={article.name}
+                          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        {article.category_id && (
+                          <div className="absolute top-4 right-4 bg-primary/90 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-semibold border border-white/20">
+                            {getCategoryName(article.category_id)}
+                          </div>
+                        )}
+                        {/* Reading time estimate */}
+                        <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-sm text-white px-2 py-1 rounded-full text-xs">
+                          {Math.ceil((article.description?.replace(/<[^>]*>/g, '')?.split(/\s+/)?.length || 0) / 200)} دقائق قراءة
                         </div>
                       </div>
 
-                      <h3 className="text-xl font-bold mb-3 line-clamp-2">{article.name}</h3>
-                      <p className="text-muted-foreground mb-4 line-clamp-3">{article.description}</p>
-                    </div>
-                  </div>
+                      <div className="p-4">
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                          <div className="flex items-center gap-1">
+                            <FiCalendar className="h-4 w-4 text-primary" />
+                            <span>{article.created_at ? new Date(article.created_at).toLocaleDateString('ar-EG') : ''}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <FiUser className="h-4 w-4 text-primary" />
+                            <span>{article.created_by || 'غير معروف'}</span>
+                          </div>
+                        </div>
 
-                  <div className="flex items-center justify-between p-4">
-                    <span></span>
-                    <Link
-                      to={`/articles/${article.id}`}
-                      className="inline-flex items-center gap-2 text-primary hover:text-primary-hover transition-colors font-semibold"
-                    >
-                      اقرأ المزيد
-                      <FiArrowLeft className="h-4 w-4" />
-                    </Link>
-                  </div>
-                </motion.article>
+                        <h3 className="text-lg font-bold mb-3 line-clamp-2 group-hover:text-primary transition-colors duration-300">
+                          {article.name}
+                        </h3>
+                        <p className="text-muted-foreground mb-4 line-clamp-3 text-sm leading-relaxed">
+                          {article.small_description || article.description?.replace(/<[^>]*>/g, '').substring(0, 150) + '...' || 'لا يوجد وصف متاح'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="p-4 pt-0">
+                      <div className="inline-flex items-center gap-2 bg-gradient-primary text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all duration-300 text-sm w-full justify-center group-hover:scale-105">
+                        اقرأ المزيد
+                        <FiArrowLeft className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </motion.article>
+                </Link>
               ))}
             </motion.div>
             {totalPages > 1 && (

@@ -16,20 +16,66 @@ const PortfolioDetails = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!id) return;
+
     setLoading(true);
-    fetch(`${apiBaseUrl}/api/project`)
-      .then(res => res.json())
-      .then(data => {
-        const found = (data.projects || []).find((p: any) => String(p.id) === String(id));
-        setProject(found || null);
-        
-        // Set breadcrumb data for portfolio
-        if (found) {
-          dispatch(setPortfolioData({
-            title: found.name,
-            id: String(found.id)
-          }));
+
+    const fetchAllProjects = () => {
+      return fetch(`${apiBaseUrl}/api/project?per_page=200`)
+        .then(res => res.json())
+        .then(data => {
+          console.log('All projects response:', data);
+          const projects = data.projects || data.data || [];
+          const found = projects.find((p: any) => String(p.id) === String(id));
+          console.log('Found project:', found);
+          return found;
+        });
+    };
+
+    const fetchSingleProject = () => {
+      return fetch(`${apiBaseUrl}/api/project/${id}`)
+        .then(res => {
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          return res.json();
+        })
+        .then(data => {
+          console.log('Single project response:', data);
+          return data.project || data.data || data;
+        });
+    };
+
+    // جرب الطريقة الأولى أولاً
+    fetchAllProjects()
+      .then(projectData => {
+        if (projectData) {
+          setProject(projectData);
+          if (projectData) {
+            dispatch(setPortfolioData({
+              title: projectData.name,
+              id: String(projectData.id)
+            }));
+          }
+        } else {
+          // إذا لم نجد المشروع، جرب الطريقة الثانية
+          return fetchSingleProject();
         }
+      })
+      .then(projectData => {
+        if (projectData && !project) {
+          setProject(projectData);
+          if (projectData) {
+            dispatch(setPortfolioData({
+              title: projectData.name,
+              id: String(projectData.id)
+            }));
+          }
+        }
+      })
+      .catch(error => {
+        console.error('Error loading project:', error);
+        setProject(null);
       })
       .finally(() => setLoading(false));
   }, [id, dispatch]);
@@ -75,7 +121,7 @@ const PortfolioDetails = () => {
               {/* Hero Section */}
               <div className="relative">
                 <img
-                  src={project.images && project.images.length > 0 
+                  src={project.images && project.images.length > 0
                     ? (project.images[0].image.startsWith('http') ? project.images[0].image : `${apiBaseUrl}/storage/${project.images[0].image}`)
                     : project.image
                   }
@@ -142,35 +188,35 @@ const PortfolioDetails = () => {
                         {project.images.length} صورة
                       </span>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
                       {project.images.slice(0, 8).map((img: any, index: number) => (
-                        <div 
-                          key={img.id} 
-                          className="group relative overflow-hidden rounded-lg cursor-pointer"
+                        <div
+                          key={img.id}
+                          className="group relative overflow-hidden rounded-lg cursor-pointer bg-black/20"
                           onClick={() => setSelectedImage(img.image.startsWith('http') ? img.image : `${apiBaseUrl}/storage/${img.image}`)}
                         >
-                          <img 
-                            src={img.image.startsWith('http') ? img.image : `${apiBaseUrl}/storage/${img.image}`} 
-                            alt={`صورة ${project.name}`} 
-                            className="w-full h-40 object-cover object-top group-hover:scale-110 transition-transform duration-300" 
+                          <img
+                            src={img.image.startsWith('http') ? img.image : `${apiBaseUrl}/storage/${img.image}`}
+                            alt={`صورة ${project.name}`}
+                            className="w-full h-40 object-cover object-top group-hover:scale-110 transition-transform duration-300"
                           />
                           <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-300 flex items-center justify-center">
                             <FiEye className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                           </div>
                         </div>
                       ))}
-                      
+
                       {/* Show remaining images count overlay */}
                       {project.images.length > 8 && (
-                        <div 
+                        <div
                           className="group relative overflow-hidden rounded-lg cursor-pointer"
                           onClick={() => setSelectedImage(project.images[8].image.startsWith('http') ? project.images[8].image : `${apiBaseUrl}/storage/${project.images[8].image}`)}
                         >
-                          <img 
-                            src={project.images[8].image.startsWith('http') ? project.images[8].image : `${apiBaseUrl}/storage/${project.images[8].image}`} 
-                            alt={`صورة ${project.name}`} 
-                            className="w-full h-40 object-cover group-hover:scale-110 transition-transform duration-300" 
+                          <img
+                            src={project.images[8].image.startsWith('http') ? project.images[8].image : `${apiBaseUrl}/storage/${project.images[8].image}`}
+                            alt={`صورة ${project.name}`}
+                            className="w-full h-40 object-cover group-hover:scale-110 transition-transform duration-300"
                           />
                           <div className="absolute inset-0 bg-black bg-opacity-60 group-hover:bg-opacity-70 transition-all duration-300 flex items-center justify-center">
                             <div className="text-center">
@@ -196,7 +242,7 @@ const PortfolioDetails = () => {
                         {project.skill.length}
                       </span>
                     </div>
-                    
+
                     <div className="flex flex-wrap gap-3">
                       {project.skill.map((tech: any) => (
                         <div
@@ -204,10 +250,10 @@ const PortfolioDetails = () => {
                           className="flex items-center gap-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-medium shadow-sm border border-gray-200 dark:border-gray-600"
                         >
                           {tech.image && (
-                            <img 
-                              src={tech.image.startsWith('http') ? tech.image : `${apiBaseUrl}/storage/${tech.image}`} 
-                              alt={tech.name} 
-                              className="w-6 h-6 rounded-full object-cover" 
+                            <img
+                              src={tech.image.startsWith('http') ? tech.image : `${apiBaseUrl}/storage/${tech.image}`}
+                              alt={tech.name}
+                              className="w-6 h-6 rounded-full object-cover"
                             />
                           )}
                           <FiTag className="h-4 w-4 text-primary" />
@@ -240,17 +286,17 @@ const PortfolioDetails = () => {
                         <FiChevronDown className="h-5 w-5 text-gray-500" />
                       )}
                     </button>
-                    
+
                     {expandedServices && (
                       <div className="mt-4 space-y-4">
                         {project.services.map((service: any) => (
                           <div key={service.id} className="bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-800 dark:to-blue-900/20 rounded-xl p-4">
                             <div className="flex items-start gap-4">
                               {service.image && (
-                                <img 
-                                  src={service.image.startsWith('http') ? service.image : `${apiBaseUrl}/storage/${service.image}`} 
-                                  alt={service.name} 
-                                  className="w-16 h-16 rounded-lg object-cover flex-shrink-0 shadow-md" 
+                                <img
+                                  src={service.image.startsWith('http') ? service.image : `${apiBaseUrl}/storage/${service.image}`}
+                                  alt={service.name}
+                                  className="w-16 h-16 rounded-lg object-cover flex-shrink-0 shadow-md"
                                 />
                               )}
                               <div className="flex-1">
@@ -281,9 +327,9 @@ const PortfolioDetails = () => {
                     {project.project_url && (
                       <div className="flex items-center gap-2">
                         <FiExternalLink className="h-4 w-4 text-primary" />
-                        <a 
-                          href={project.project_url} 
-                          target="_blank" 
+                        <a
+                          href={project.project_url}
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="text-primary hover:text-primary-hover transition-colors"
                         >
@@ -322,16 +368,16 @@ const PortfolioDetails = () => {
                     {project.services.length}
                   </span>
                 </div>
-                
+
                 <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-12rem)] pr-2">
                   {project.services.map((service: any) => (
                     <div key={service.id} className="bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-800 dark:to-blue-900/20 rounded-xl p-3">
                       {service.image && (
                         <div className='flex justify-center items-center gap-2 mb-3'>
-                        <img
-                          src={service.image.startsWith('http') ? service.image : `${apiBaseUrl}/storage/${service.image}`}
-                          alt={service.name}
-                          className="w-24 h-24 rounded-lg object-cover flex-shrink-0 shadow-md"
+                          <img
+                            src={service.image.startsWith('http') ? service.image : `${apiBaseUrl}/storage/${service.image}`}
+                            alt={service.name}
+                            className="w-24 h-24 rounded-lg object-cover flex-shrink-0 shadow-md"
                           />
                         </div>
                       )}
@@ -356,8 +402,8 @@ const PortfolioDetails = () => {
 
         {/* Image Modal */}
         {selectedImage && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+          <div
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300"
             onClick={() => setSelectedImage(null)}
           >
             {/* Navigation Arrows */}
@@ -375,7 +421,7 @@ const PortfolioDetails = () => {
                       : `${apiBaseUrl}/storage/${project.images[prevIndex].image}`;
                     setSelectedImage(prevImage);
                   }}
-                  className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white text-gray-900 p-3 rounded-full hover:bg-gray-100 transition-colors shadow-lg z-10"
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/90 dark:bg-gray-800/90 text-gray-900 dark:text-gray-100 p-3 rounded-full hover:bg-white dark:hover:bg-gray-700 transition-all duration-200 shadow-lg backdrop-blur-sm z-10 hover:scale-110"
                   title="الصورة السابقة"
                 >
                   <FiArrowLeft className="h-6 w-6" />
@@ -393,7 +439,7 @@ const PortfolioDetails = () => {
                       : `${apiBaseUrl}/storage/${project.images[nextIndex].image}`;
                     setSelectedImage(nextImage);
                   }}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white text-gray-900 p-3 rounded-full hover:bg-gray-100 transition-colors shadow-lg z-10"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/90 dark:bg-gray-800/90 text-gray-900 dark:text-gray-100 p-3 rounded-full hover:bg-white dark:hover:bg-gray-700 transition-all duration-200 shadow-lg backdrop-blur-sm z-10 hover:scale-110"
                   title="الصورة التالية"
                 >
                   <FiArrowRight className="h-6 w-6" />
@@ -401,32 +447,34 @@ const PortfolioDetails = () => {
               </>
             )}
             <div className="relative max-w-4xl max-h-full w-full h-full flex items-center justify-center">
-              
-              <div className=" rounded-xl relative max-w-full max-h-full overflow-auto scrollbar-hide">
-                <img 
-                  src={selectedImage} 
-                  alt="صورة مكبرة" 
+
+              <div className="rounded-xl relative max-w-full max-h-full overflow-auto custom-scrollbar bg-white/5 dark:bg-black/20 backdrop-blur-sm border border-white/20 dark:border-gray-700/50 shadow-2xl">
+                <img
+                  src={selectedImage}
+                  alt="صورة مكبرة"
                   className="max-w-full max-h-full object-contain rounded-lg"
                 />
               </div>
-              
 
-              
               {/* Close Button */}
               <button
                 onClick={() => setSelectedImage(null)}
-                className="absolute top-4 right-4 bg-white text-gray-900 p-3 rounded-full hover:bg-gray-100 transition-colors shadow-lg z-10"
+                className="absolute top-4 right-4 bg-white/90 dark:bg-gray-800/90 text-gray-900 dark:text-gray-100 p-3 rounded-full hover:bg-white dark:hover:bg-gray-700 transition-all duration-200 shadow-lg backdrop-blur-sm z-10 hover:scale-110 hover:rotate-90"
                 title="إغلاق"
               >
                 <FiX className="h-5 w-5" />
               </button>
-              
+
               {/* Image Counter */}
               {project.images && project.images.length > 1 && (
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-4 py-2 rounded-full text-sm">
-                  {project.images.findIndex((img: any) => 
-                    (img.image.startsWith('http') ? img.image : `${apiBaseUrl}/storage/${img.image}`) === selectedImage
-                  ) + 1} / {project.images.length}
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/60 dark:bg-gray-900/80 text-white px-4 py-2 rounded-full text-sm backdrop-blur-md border border-white/20 dark:border-gray-700/50 shadow-lg">
+                  <span className="font-medium">
+                    {project.images.findIndex((img: any) =>
+                      (img.image.startsWith('http') ? img.image : `${apiBaseUrl}/storage/${img.image}`) === selectedImage
+                    ) + 1}
+                  </span>
+                  <span className="mx-2 text-gray-300">/</span>
+                  <span className="font-medium">{project.images.length}</span>
                 </div>
               )}
             </div>

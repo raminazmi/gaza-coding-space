@@ -1,13 +1,80 @@
+# Robots.txt for ART TEBU
+# تعليمات للزواحف ومحركات البحث
+
+User-agent: *
+Allow: /
+
+# High-priority pages
+Allow: /articles
+Allow: /courses
+Allow: /services
+Allow: /portfolio
+Allow: /contact
+
+# Block private/sensitive pages
+Disallow: /saved-articles
+Disallow: /profile
+Disallow: /notifications
+Disallow: /chat
+Disallow: /messenger
+Disallow: /my-courses
+Disallow: /teacher/
+Disallow: /login
+Disallow: /register
+Disallow: /verify
+Disallow: /order-service
+
+# Block admin or development paths
+Disallow: /admin/
+Disallow: /api/
+Disallow: /_next/
+Disallow: /.well-known/
+Disallow: /dev/
+
+# Allow important files
+Allow: /sitemap.xml
+Allow: /robots.txt
+Allow: /favicon.ico
+Allow: /manifest.json
+
+# Block common bot traps
+Disallow: /trap/
+Disallow: /honeypot/
+
+# Sitemap location
+Sitemap: https://arttebu.com/sitemap.xml
+
+# Crawl delay for respectful crawling
+Crawl-delay: 1
+
+# Specific instructions for major search engines
 User-agent: Googlebot
 Allow: /
+Crawl-delay: 1
 
 User-agent: Bingbot
 Allow: /
+Crawl-delay: 2
+
+User-agent: Slurp
+Allow: /
+Crawl-delay: 3
 
 User-agent: Twitterbot
 Allow: /
 
 User-agent: facebookexternalhit
+Allow: /
+
+# Block aggressive crawlers
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
 Allow: /
 
 User-agent: *

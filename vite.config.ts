@@ -9,8 +9,8 @@ export default defineConfig(({ mode }) => ({
       plugins: ['@babel/plugin-transform-runtime']
     }
   }),
-    mode === 'development' &&
-    componentTagger(),
+  mode === 'development' &&
+  componentTagger(),
   ].filter(Boolean),
   server: {
     proxy: {
@@ -24,16 +24,27 @@ export default defineConfig(({ mode }) => ({
     // إضافة إعدادات لضمان عمل SPA بشكل صحيح
     historyApiFallback: true,
   },
-  // إضافة إعدادات للبناء
+  // إضافة إعدادات للبناء وتحسين الأداء
   build: {
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
           router: ['react-router-dom'],
+          ui: ['framer-motion', 'lucide-react'],
         },
       },
     },
+    // تحسين الأداء
+    minify: 'esbuild',
+    sourcemap: false,
+    target: 'esnext',
+    // تحسين حجم الملفات
+    chunkSizeWarningLimit: 1000,
+  },
+  // تحسين أداء الطلبات
+  esbuild: {
+    drop: mode === 'production' ? ['console', 'debugger'] : [],
   },
   resolve: {
     alias: {
